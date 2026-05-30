@@ -90,7 +90,7 @@ export async function bootstrapSuperAdminAction(
   if (!expected) {
     return {
       error:
-        "Falta SUPER_ADMIN_BOOTSTRAP_SECRET en .env.local. Añádela y reinicia el servidor.",
+        "Falta SUPER_ADMIN_BOOTSTRAP_SECRET. Añádela en Vercel → Settings → Environment Variables (o en .env.local en local) y redeploy.",
     };
   }
   if (secret !== expected) return { error: "Clave de bootstrap incorrecta." };

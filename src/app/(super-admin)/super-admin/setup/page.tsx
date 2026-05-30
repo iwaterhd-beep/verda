@@ -56,11 +56,13 @@ export default function SuperAdminSetupPage() {
         </span>
         <h1 className="text-2xl font-semibold">Configurar super admin</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Solo la primera vez. Necesitas{" "}
+          Solo la primera vez. Añade{" "}
           <code className="rounded bg-secondary px-1 text-xs">
             SUPER_ADMIN_BOOTSTRAP_SECRET
           </code>{" "}
-          en <code className="rounded bg-secondary px-1 text-xs">.env.local</code>.
+          en Vercel → Environment Variables (o en{" "}
+          <code className="rounded bg-secondary px-1 text-xs">.env.local</code>{" "}
+          en local), elige una clave larga y redeploy.
         </p>
       </div>
 
