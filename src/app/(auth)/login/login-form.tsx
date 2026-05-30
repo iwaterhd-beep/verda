@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { Mail, Lock, Loader2, Leaf, Info } from "lucide-react";
 import { useActionState } from "react";
 import { signIn, type AuthState } from "@/app/(auth)/actions";
@@ -9,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-export function LoginForm() {
-  const params = useSearchParams();
-  const isMemberLogin = params.get("rol") === "socio";
-  const redirectTo = isMemberLogin
-    ? "/portal"
-    : params.get("redirect") || "/dashboard";
+interface LoginFormProps {
+  rol?: string;
+  redirect?: string;
+}
+
+export function LoginForm({ rol, redirect }: LoginFormProps) {
+  const isMemberLogin = rol === "socio";
+  const redirectTo = isMemberLogin ? "/portal" : redirect || "/dashboard";
 
   const [state, formAction, pending] = useActionState<AuthState, FormData>(
     signIn,

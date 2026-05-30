@@ -1,19 +1,16 @@
-import { Suspense } from "react";
-import { Loader2 } from "lucide-react";
 import { LoginForm } from "./login-form";
 
-function LoginFallback() {
-  return (
-    <div className="flex min-h-[320px] items-center justify-center">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
-  );
-}
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ rol?: string; redirect?: string }>;
+}) {
+  const params = await searchParams;
 
-export default function LoginPage() {
   return (
-    <Suspense fallback={<LoginFallback />}>
-      <LoginForm />
-    </Suspense>
+    <LoginForm
+      rol={params.rol}
+      redirect={params.redirect}
+    />
   );
 }
