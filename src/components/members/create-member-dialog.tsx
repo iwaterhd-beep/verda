@@ -51,6 +51,7 @@ export function CreateMemberDialog() {
         plan,
       });
       queryClient.invalidateQueries({ queryKey: ["members"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-stats"] });
       toast.success("Socio creado", {
         description: `${fullName} se ha añadido como pendiente de verificación.`,
       });
