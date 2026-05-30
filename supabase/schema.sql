@@ -147,6 +147,12 @@ create table if not exists public.products (
   expires_at           date,
   photos               text[] not null default '{}',
   video_url            text,
+  grower               text,
+  extractor            text,
+  thc_percent          numeric(5,2),
+  genetics             text,
+  origin               text,
+  description          text,
   created_at           timestamptz default now(),
   primary key (club_id, id)
 );

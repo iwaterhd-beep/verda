@@ -2,6 +2,8 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { defaultCatalog } from "@/lib/catalog";
+import { isCannabisProduct } from "@/lib/product-strain";
+import type { Product } from "@/types";
 
 async function staffClubId() {
   const supabase = await createClient();
@@ -69,6 +71,12 @@ export interface ProductInput {
   expiresAt?: string | null;
   photos?: string[];
   videoUrl?: string | null;
+  grower?: string;
+  extractor?: string;
+  thcPercent?: number | null;
+  genetics?: Product["genetics"];
+  origin?: Product["origin"];
+  description?: string;
 }
 
 export interface ProductActionResult {
@@ -76,9 +84,53 @@ export interface ProductActionResult {
   id?: string;
 }
 
-const ALLOWED_CATEGORIES = ["FLOR", "EXTRACTO", "COMESTIBLE", "MERCH", "OTRO"];
+const ALLOWED_GENETICS = ["INDICA", "SATIVA", "HYBRID"] as const;
+const ALLOWED_ORIGINS = [
+  "SPAIN",
+  "CALIFORNIA",
+  "NETHERLANDS",
+  "THAILAND",
+  "CANADA",
+] as const;
+const ALLOWED_CATEGORIES = [
+  "FLOR",
+  "HASH",
+  "EXTRACTO",
+  "COMESTIBLE",
+  "MERCH",
+  "OTRO",
+];
+const ALLOWED_UNITS = ["g", "ud"] as const;
+
 const MAX_PHOTOS = 4;
 const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
+
+function strainFieldsFromInput(input: ProductInput) {
+  if (!isCannabisProduct(input.category as Product["category"])) {
+    return {
+      grower: null,
+      extractor: null,
+      thc_percent: null,
+      genetics: null,
+      origin: null,
+      description: null,
+    };
+  }
+
+  const thc =
+    input.thcPercent != null && input.thcPercent >= 0
+      ? Math.round(input.thcPercent * 10) / 10
+      : null;
+
+  return {
+    grower: input.grower?.trim() || null,
+    extractor: input.extractor?.trim() || null,
+    thc_percent: thc,
+    genetics: input.genetics || null,
+    origin: input.origin || null,
+    description: input.description?.trim() || null,
+  };
+}
 
 function productIdFromName(name: string) {
   const base = name
@@ -100,8 +152,18 @@ function validateProductInput(input: ProductInput): string | null {
     return "El umbral de stock bajo no puede ser negativo.";
   }
   if (!ALLOWED_CATEGORIES.includes(input.category)) return "Categoría no válida.";
+  if (!ALLOWED_UNITS.includes(input.unit)) return "Unidad de venta no válida.";
   if ((input.photos?.length ?? 0) > MAX_PHOTOS) {
     return `Máximo ${MAX_PHOTOS} fotos por producto.`;
+  }
+  if (input.genetics && !ALLOWED_GENETICS.includes(input.genetics)) {
+    return "Genética no válida.";
+  }
+  if (input.origin && !ALLOWED_ORIGINS.includes(input.origin)) {
+    return "Origen no válido.";
+  }
+  if (input.thcPercent != null && (input.thcPercent < 0 || input.thcPercent > 100)) {
+    return "El THC debe estar entre 0 y 100.";
   }
   return null;
 }
@@ -119,11 +181,30 @@ function rowFromInput(input: ProductInput, skuFallback: string) {
     expires_at: input.expiresAt || null,
     photos: input.photos ?? [],
     video_url: input.videoUrl ?? null,
+    ...strainFieldsFromInput(input),
   };
 }
 
-function isMissingMediaColumnError(message: string) {
-  return /photos|video_url/i.test(message);
+function isMissingOptionalColumnError(message: string) {
+  return /photos|video_url|grower|extractor|thc_percent|genetics|origin|description/i.test(
+    message,
+  );
+}
+
+function baseRowFromInput(input: ProductInput, skuFallback: string) {
+  const row = rowFromInput(input, skuFallback);
+  const {
+    photos: _p,
+    video_url: _v,
+    grower: _g,
+    extractor: _e,
+    thc_percent: _t,
+    genetics: _ge,
+    origin: _o,
+    description: _d,
+    ...base
+  } = row;
+  return base;
 }
 
 async function updateProductRow(
@@ -144,12 +225,11 @@ async function updateProductRow(
 
   if (
     result.error &&
-    isMissingMediaColumnError(result.error.message)
+    isMissingOptionalColumnError(result.error.message)
   ) {
-    const { photos: _p, video_url: _v, ...baseRow } = fullRow;
     result = await supabase
       .from("products")
-      .update(baseRow)
+      .update(baseRowFromInput(input, sku))
       .eq("club_id", clubId)
       .eq("id", productId)
       .select("id")
@@ -186,12 +266,11 @@ export async function createProductAction(
   });
 
   if (error) {
-    if (isMissingMediaColumnError(error.message)) {
-      const { photos: _p, video_url: _v, ...baseRow } = rowFromInput(input, sku);
+    if (isMissingOptionalColumnError(error.message)) {
       const retry = await auth.supabase.from("products").insert({
         id,
         club_id: auth.clubId,
-        ...baseRow,
+        ...baseRowFromInput(input, sku),
       });
       if (retry.error) return { error: retry.error.message };
       return { id };

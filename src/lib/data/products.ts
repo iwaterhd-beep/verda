@@ -16,6 +16,12 @@ type Row = {
   expires_at: string | null;
   photos?: string[] | null;
   video_url?: string | null;
+  grower?: string | null;
+  extractor?: string | null;
+  thc_percent?: number | null;
+  genetics?: Product["genetics"];
+  origin?: Product["origin"];
+  description?: string | null;
 };
 
 function toProduct(r: Row): Product {
@@ -32,6 +38,12 @@ function toProduct(r: Row): Product {
     expiresAt: r.expires_at,
     photos: r.photos ?? [],
     videoUrl: r.video_url ?? null,
+    grower: r.grower ?? null,
+    extractor: r.extractor ?? null,
+    thcPercent: r.thc_percent != null ? Number(r.thc_percent) : null,
+    genetics: r.genetics ?? null,
+    origin: r.origin ?? null,
+    description: r.description ?? null,
   };
 }
 

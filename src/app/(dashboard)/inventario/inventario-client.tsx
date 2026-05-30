@@ -22,15 +22,8 @@ import {
 } from "@/components/inventario/product-form-dialog";
 import { DeleteProductDialog } from "@/components/inventario/delete-product-dialog";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { categoryMeta } from "@/lib/product-meta";
 import type { Product } from "@/types";
-
-const categoryLabels: Record<string, string> = {
-  FLOR: "Flor",
-  EXTRACTO: "Extracto",
-  COMESTIBLE: "Comestible",
-  MERCH: "Merch",
-  OTRO: "Otro",
-};
 
 export function InventarioClient() {
   const queryClient = useQueryClient();
@@ -118,6 +111,7 @@ export function InventarioClient() {
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="pl-6">Producto</TableHead>
                   <TableHead>Categoría</TableHead>
+                  <TableHead className="hidden sm:table-cell">Venta</TableHead>
                   <TableHead className="hidden md:table-cell">Lote</TableHead>
                   <TableHead>Stock</TableHead>
                   <TableHead className="hidden lg:table-cell">Caducidad</TableHead>
@@ -129,7 +123,7 @@ export function InventarioClient() {
                 {products.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={8}
                       className="py-12 text-center text-sm text-muted-foreground"
                     >
                       No hay productos. Crea el primero con &quot;Nuevo producto&quot;.
@@ -176,7 +170,12 @@ export function InventarioClient() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {categoryLabels[p.category]}
+                            {categoryMeta[p.category]?.formLabel ?? p.category}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <Badge variant="secondary" className="font-normal">
+                            {p.unit === "g" ? "Gramos" : "Unidades"}
                           </Badge>
                         </TableCell>
                         <TableCell className="hidden font-mono text-xs text-muted-foreground md:table-cell">

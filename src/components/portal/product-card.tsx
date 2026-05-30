@@ -3,8 +3,15 @@
 import { Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/store/use-cart";
 import { categoryMeta } from "@/lib/product-meta";
+import {
+  formatThcPercent,
+  geneticsLabel,
+  isCannabisProduct,
+  originLabel,
+} from "@/lib/product-strain";
 import { formatCurrency } from "@/lib/utils";
 import type { Product } from "@/types";
 
@@ -17,6 +24,10 @@ export function ProductCard({ product }: { product: Product }) {
   const decrement = useCart((s) => s.decrement);
   const soldOut = product.stock <= 0;
   const hasMedia = Boolean(product.videoUrl || product.photos?.length);
+  const showStrain = isCannabisProduct(product.category);
+  const thc = formatThcPercent(product.thcPercent);
+  const genetics = geneticsLabel(product.genetics);
+  const origin = originLabel(product.origin);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card">
@@ -42,7 +53,7 @@ export function ProductCard({ product }: { product: Product }) {
         </div>
       )}
 
-      <div className="flex items-center gap-3 p-3">
+      <div className="flex items-start gap-3 p-3">
         {!hasMedia && (
           <span
             className={`grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${meta.gradient} text-2xl`}
@@ -55,7 +66,36 @@ export function ProductCard({ product }: { product: Product }) {
           <p className="text-sm text-muted-foreground">
             {formatCurrency(product.pricePerUnit)}/{product.unit}
           </p>
-          {soldOut && <p className="text-xs text-destructive">Agotado</p>}
+          {showStrain && (thc || genetics || origin) && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {thc && (
+                <Badge variant="outline" className="h-5 text-[10px]">
+                  {thc}
+                </Badge>
+              )}
+              {genetics && (
+                <Badge variant="outline" className="h-5 text-[10px]">
+                  {genetics}
+                </Badge>
+              )}
+              {origin && (
+                <Badge variant="outline" className="h-5 text-[10px]">
+                  {origin}
+                </Badge>
+              )}
+            </div>
+          )}
+          {showStrain && (product.grower || product.extractor) && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {[product.grower, product.extractor].filter(Boolean).join(" · ")}
+            </p>
+          )}
+          {showStrain && product.description && (
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+              {product.description}
+            </p>
+          )}
+          {soldOut && <p className="mt-1 text-xs text-destructive">Agotado</p>}
         </div>
 
         {qty === 0 ? (
@@ -63,6 +103,7 @@ export function ProductCard({ product }: { product: Product }) {
             size="sm"
             variant="secondary"
             disabled={soldOut}
+            className="shrink-0"
             onClick={() => {
               add(product);
               toast.success("Añadido al pedido", { description: product.name });
@@ -71,7 +112,7 @@ export function ProductCard({ product }: { product: Product }) {
             <Plus className="h-4 w-4" /> Añadir
           </Button>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <Button
               size="icon"
               variant="outline"

@@ -32,15 +32,11 @@ import {
   uploadProductVideoClient,
   removeProductVideoClient,
 } from "@/lib/data/product-media";
+import { ProductStrainFields } from "@/components/inventario/product-strain-fields";
+import { isCannabisProduct } from "@/lib/product-strain";
+import { productCategories, unitMeta, unitOptions } from "@/lib/product-meta";
+import type { ProductGenetics, ProductOrigin } from "@/lib/product-strain";
 import type { Product } from "@/types";
-
-const categories: { value: Product["category"]; label: string }[] = [
-  { value: "FLOR", label: "Flor" },
-  { value: "EXTRACTO", label: "Extracto" },
-  { value: "COMESTIBLE", label: "Comestible" },
-  { value: "MERCH", label: "Merch" },
-  { value: "OTRO", label: "Otro" },
-];
 
 const MAX_PHOTOS = 4;
 
@@ -70,6 +66,13 @@ export function ProductFormDialog({
     product?.category ?? "FLOR",
   );
   const [unit, setUnit] = React.useState<Product["unit"]>(product?.unit ?? "g");
+  const unitInfo = unitMeta(unit);
+  const [genetics, setGenetics] = React.useState<ProductGenetics | "">(
+    product?.genetics ?? "",
+  );
+  const [origin, setOrigin] = React.useState<ProductOrigin | "">(
+    product?.origin ?? "",
+  );
   const [photos, setPhotos] = React.useState<string[]>(product?.photos ?? []);
   const [videoUrl, setVideoUrl] = React.useState<string | null>(
     product?.videoUrl ?? null,
@@ -84,6 +87,8 @@ export function ProductFormDialog({
     setName(product?.name ?? "");
     setCategory(product?.category ?? "FLOR");
     setUnit(product?.unit ?? "g");
+    setGenetics(product?.genetics ?? "");
+    setOrigin(product?.origin ?? "");
     setPhotos(product?.photos ?? []);
     setVideoUrl(product?.videoUrl ?? null);
     setVideoFile(null);
@@ -147,6 +152,13 @@ export function ProductFormDialog({
       return;
     }
 
+    const thcRaw = String(formData.get("thcPercent") || "").trim();
+    const thcPercent = thcRaw === "" ? null : Number(thcRaw);
+    if (thcRaw !== "" && (!Number.isFinite(thcPercent) || thcPercent! < 0 || thcPercent! > 100)) {
+      toast.error("Indica un THC % válido (0–100)");
+      return;
+    }
+
     const payload = {
       name: trimmedName,
       category,
@@ -159,6 +171,12 @@ export function ProductFormDialog({
       expiresAt: String(formData.get("expiresAt") || "") || null,
       photos,
       videoUrl,
+      grower: String(formData.get("grower") || ""),
+      extractor: String(formData.get("extractor") || ""),
+      thcPercent,
+      genetics: isCannabisProduct(category) ? genetics || null : null,
+      origin: isCannabisProduct(category) ? origin || null : null,
+      description: String(formData.get("description") || ""),
     };
 
     setLoading(true);
@@ -268,10 +286,10 @@ export function ProductFormDialog({
                 onValueChange={(v) => setCategory(v as Product["category"])}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Elige categoría" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((c) => (
+                  {productCategories.map((c) => (
                     <SelectItem key={c.value} value={c.value}>
                       {c.label}
                     </SelectItem>
@@ -280,17 +298,20 @@ export function ProductFormDialog({
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label>Unidad</Label>
+              <Label>Venta por</Label>
               <Select
                 value={unit}
                 onValueChange={(v) => setUnit(v as Product["unit"])}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Gramos o unidades" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="g">Gramos (g)</SelectItem>
-                  <SelectItem value="ud">Unidades (ud)</SelectItem>
+                  {unitOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -298,18 +319,18 @@ export function ProductFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-2">
-              <Label htmlFor="stock">Stock</Label>
+              <Label htmlFor="stock">{unitInfo.stockLabel}</Label>
               <Input
                 id="stock"
                 name="stock"
                 type="number"
                 min={0}
-                step="0.01"
+                step={unitInfo.stockStep}
                 defaultValue={product?.stock ?? 0}
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="pricePerUnit">Precio / unidad (Crd)</Label>
+              <Label htmlFor="pricePerUnit">{unitInfo.priceLabel}</Label>
               <Input
                 id="pricePerUnit"
                 name="pricePerUnit"
@@ -329,7 +350,7 @@ export function ProductFormDialog({
                 name="lowStockThreshold"
                 type="number"
                 min={0}
-                step="0.01"
+                step={unitInfo.stockStep}
                 defaultValue={product?.lowStockThreshold ?? 10}
               />
             </div>
@@ -364,6 +385,16 @@ export function ProductFormDialog({
               />
             </div>
           </div>
+
+          {isCannabisProduct(category) && (
+            <ProductStrainFields
+              product={product}
+              genetics={genetics}
+              origin={origin}
+              onGeneticsChange={setGenetics}
+              onOriginChange={setOrigin}
+            />
+          )}
 
           <div className="space-y-2">
             <Label className="flex items-center gap-1.5">

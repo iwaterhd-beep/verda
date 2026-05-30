@@ -52,7 +52,7 @@ export interface AccessLog {
 export interface Product {
   id: string;
   name: string;
-  category: "FLOR" | "EXTRACTO" | "COMESTIBLE" | "MERCH" | "OTRO";
+  category: "FLOR" | "HASH" | "EXTRACTO" | "COMESTIBLE" | "MERCH" | "OTRO";
   sku: string;
   stock: number;
   unit: "g" | "ud";
@@ -62,6 +62,12 @@ export interface Product {
   expiresAt: string | null;
   photos?: string[];
   videoUrl?: string | null;
+  grower?: string | null;
+  extractor?: string | null;
+  thcPercent?: number | null;
+  genetics?: "INDICA" | "SATIVA" | "HYBRID" | null;
+  origin?: "SPAIN" | "CALIFORNIA" | "NETHERLANDS" | "THAILAND" | "CANADA" | null;
+  description?: string | null;
 }
 
 export interface Sale {
