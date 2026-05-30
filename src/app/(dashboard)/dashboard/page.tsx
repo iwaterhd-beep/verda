@@ -4,7 +4,6 @@ import {
   ScanLine,
   TrendingUp,
   Download,
-  Plus,
   AlertTriangle,
   Clock,
 } from "lucide-react";
@@ -25,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CreateMemberDialog } from "@/components/members/create-member-dialog";
 import {
   accessLogs,
   newMembersSeries,
@@ -44,9 +44,7 @@ export default function DashboardPage() {
         <Button variant="outline" size="sm">
           <Download className="h-4 w-4" /> Exportar
         </Button>
-        <Button size="sm">
-          <Plus className="h-4 w-4" /> Nuevo socio
-        </Button>
+        <CreateMemberDialog />
       </PageHeader>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
