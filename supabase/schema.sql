@@ -168,6 +168,19 @@ declare
   meta_role text := new.raw_user_meta_data->>'role';
   meta_club uuid := nullif(new.raw_user_meta_data->>'club_id', '')::uuid;
 begin
+  -- Super admin de plataforma: perfil sin club.
+  if meta_role = 'SUPER_ADMIN' then
+    insert into public.profiles (id, club_id, name, email, role)
+    values (
+      new.id,
+      null,
+      coalesce(new.raw_user_meta_data->>'name', split_part(new.email, '@', 1)),
+      new.email,
+      'SUPER_ADMIN'
+    );
+    return new;
+  end if;
+
   -- Alta de SOCIO (creada por el staff): se une a un club existente, sin crear club.
   if meta_role = 'MEMBER' and meta_club is not null then
     insert into public.profiles (id, club_id, name, email, role)
@@ -233,15 +246,27 @@ returns boolean language sql stable security definer set search_path = public as
   select coalesce(public.my_role() <> 'MEMBER', false)
 $$;
 
--- Perfil propio
+-- Helper: ¿es super admin de plataforma?
+create or replace function public.is_super_admin()
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce(public.my_role() = 'SUPER_ADMIN'::role, false)
+$$;
+
+-- Perfil propio (+ super admin lee todos)
 drop policy if exists "own profile" on public.profiles;
 create policy "own profile" on public.profiles
   for all using (id = auth.uid()) with check (id = auth.uid());
 
--- Club propio
+drop policy if exists "super admin profiles" on public.profiles;
+create policy "super admin profiles" on public.profiles
+  for select to authenticated
+  using (public.is_super_admin());
+
+-- Club propio (+ super admin ve todos)
 drop policy if exists "own club" on public.clubs;
 create policy "own club" on public.clubs
-  for all using (id = public.my_club_id());
+  for all using (id = public.my_club_id() or public.is_super_admin())
+  with check (id = public.my_club_id() or public.is_super_admin());
 
 -- Socios del club: el STAFF gestiona todos los del club.
 drop policy if exists "club members" on public.members;
@@ -254,6 +279,11 @@ drop policy if exists "member self" on public.members;
 create policy "member self" on public.members
   for select to authenticated
   using (user_id = auth.uid());
+
+drop policy if exists "super admin members" on public.members;
+create policy "super admin members" on public.members
+  for select to authenticated
+  using (public.is_super_admin());
 
 -- Cartera: el STAFF gestiona la de los socios de su club.
 drop policy if exists "club wallet" on public.wallet_movements;
@@ -300,6 +330,11 @@ create policy "member orders self" on public.orders
   using (
     member_id in (select id from public.members where user_id = auth.uid())
   );
+
+drop policy if exists "super admin orders" on public.orders;
+create policy "super admin orders" on public.orders
+  for select to authenticated
+  using (public.is_super_admin());
 
 drop policy if exists "club order items" on public.order_items;
 create policy "club order items" on public.order_items

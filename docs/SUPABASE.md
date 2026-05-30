@@ -44,6 +44,41 @@ npm run dev
 2. `/login` para entrar; las rutas privadas quedan protegidas por middleware.
 3. "Cerrar sesión" desde el menú de usuario.
 
+## 5. Super admin (plataforma)
+
+Vista global de **todos los clubs**. El rol `SUPER_ADMIN` existe en la BD pero el panel está en `/super-admin`.
+
+### Primera configuración
+
+1. Añade en `.env.local`:
+   ```env
+   SUPER_ADMIN_BOOTSTRAP_SECRET="una-clave-secreta-larga"
+   ```
+2. Ejecuta la migración SQL [`supabase/super-admin.sql`](../supabase/super-admin.sql) si ya tenías el esquema base.
+3. Reinicia `npm run dev` y abre **`/super-admin/setup`**.
+4. Crea la cuenta (email + contraseña + clave de bootstrap).
+5. Inicia sesión en **`/login`** → te redirige a **`/super-admin`**.
+
+### Promover una cuenta existente (alternativa)
+
+En Supabase SQL Editor:
+
+```sql
+update public.profiles
+set role = 'SUPER_ADMIN', club_id = null
+where email = 'tu@email.com';
+```
+
+### Rutas del panel
+
+| Ruta | Descripción |
+| --- | --- |
+| `/super-admin` | KPIs globales |
+| `/super-admin/clubs` | Listado de clubs |
+| `/super-admin/clubs/[id]` | Detalle y plan del club |
+| `/super-admin/users` | Usuarios y roles |
+| `/super-admin/settings` | Configuración |
+
 ## Arquitectura de auth
 
 | Archivo | Rol |

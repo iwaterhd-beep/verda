@@ -38,6 +38,7 @@ export async function signIn(
     .single();
 
   let isMember = profile?.role === "MEMBER";
+  const isSuperAdmin = profile?.role === "SUPER_ADMIN";
 
   // Respaldo: si el trigger no creó el perfil, detectar socio por tabla members.
   if (!isMember) {
@@ -62,6 +63,10 @@ export async function signIn(
 
   if (isMember) {
     redirect("/portal");
+  }
+
+  if (isSuperAdmin) {
+    redirect("/super-admin");
   }
 
   redirect(redirectTo && redirectTo !== "/portal" ? redirectTo : "/dashboard");
