@@ -2,8 +2,14 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { defaultCatalog } from "@/lib/catalog";
+import { collectProductStoragePaths } from "@/lib/product-media-storage";
 import { isValidClubCategory } from "@/app/(dashboard)/inventario/category-actions";
 import { isCannabisCategory } from "@/lib/product-categories";
+import {
+  MAX_PRODUCT_PHOTOS,
+  MAX_PRODUCT_VIDEOS,
+  MAX_VIDEO_BYTES,
+} from "@/lib/product-media-limits";
 import type { Product } from "@/types";
 
 async function staffClubId() {
@@ -71,6 +77,8 @@ export interface ProductInput {
   batch?: string;
   expiresAt?: string | null;
   photos?: string[];
+  videoUrls?: string[];
+  /** @deprecated Usa videoUrls */
   videoUrl?: string | null;
   grower?: string;
   extractor?: string;
@@ -94,9 +102,6 @@ const ALLOWED_ORIGINS = [
   "CANADA",
 ] as const;
 const ALLOWED_UNITS = ["g", "ud"] as const;
-
-const MAX_PHOTOS = 4;
-const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 
 function strainFieldsFromInput(input: ProductInput, isCannabis: boolean) {
   if (!isCannabis) {
@@ -145,8 +150,11 @@ function validateProductInput(input: ProductInput): string | null {
     return "El umbral de stock bajo no puede ser negativo.";
   }
   if (!ALLOWED_UNITS.includes(input.unit)) return "Unidad de venta no válida.";
-  if ((input.photos?.length ?? 0) > MAX_PHOTOS) {
-    return `Máximo ${MAX_PHOTOS} fotos por producto.`;
+  if ((input.photos?.length ?? 0) > MAX_PRODUCT_PHOTOS) {
+    return `Máximo ${MAX_PRODUCT_PHOTOS} fotos por producto.`;
+  }
+  if ((input.videoUrls?.length ?? 0) > MAX_PRODUCT_VIDEOS) {
+    return `Máximo ${MAX_PRODUCT_VIDEOS} vídeos por producto.`;
   }
   if (input.genetics && !ALLOWED_GENETICS.includes(input.genetics)) {
     return "Genética no válida.";
@@ -176,13 +184,14 @@ function rowFromInput(
     batch: input.batch?.trim() || null,
     expires_at: input.expiresAt || null,
     photos: input.photos ?? [],
-    video_url: input.videoUrl ?? null,
+    video_urls: input.videoUrls ?? [],
+    video_url: input.videoUrls?.[0] ?? null,
     ...strainFieldsFromInput(input, isCannabis),
   };
 }
 
 function isMissingOptionalColumnError(message: string) {
-  return /photos|video_url|grower|extractor|thc_percent|genetics|origin|description/i.test(
+  return /photos|video_url|video_urls|grower|extractor|thc_percent|genetics|origin|description/i.test(
     message,
   );
 }
@@ -196,6 +205,7 @@ function baseRowFromInput(
   const {
     photos: _p,
     video_url: _v,
+    video_urls: _vs,
     grower: _g,
     extractor: _e,
     thc_percent: _t,
@@ -355,7 +365,7 @@ export async function deleteProductAction(
 
   const { data: product } = await auth.supabase
     .from("products")
-    .select("video_url")
+    .select("photos, video_url, video_urls")
     .eq("club_id", auth.clubId)
     .eq("id", productId)
     .maybeSingle();
@@ -368,20 +378,19 @@ export async function deleteProductAction(
 
   if (error) return { error: error.message };
 
-  if (product?.video_url) {
-    try {
-      const admin = createAdminClient();
-      const marker = "/product-media/";
-      const idx = product.video_url.indexOf(marker);
-      if (idx !== -1) {
-        const path = decodeURIComponent(
-          product.video_url.slice(idx + marker.length).split("?")[0],
-        );
-        await admin.storage.from("product-media").remove([path]);
-      }
-    } catch {
-      /* el producto ya se borró */
+  try {
+    const admin = createAdminClient();
+    const videos = product?.video_urls?.length
+      ? product.video_urls
+      : product?.video_url
+        ? [product.video_url]
+        : [];
+    const paths = collectProductStoragePaths(product?.photos ?? [], videos);
+    if (paths.length) {
+      await admin.storage.from("product-media").remove(paths);
     }
+  } catch {
+    /* el producto ya se borró */
   }
 
   return {};

@@ -30,8 +30,14 @@ import {
 } from "@/app/(dashboard)/inventario/actions";
 import {
   uploadProductVideoClient,
-  removeProductVideoClient,
+  removeStorageFileClient,
+  syncProductMediaClient,
+  productVideoUrls,
 } from "@/lib/data/product-media";
+import {
+  MAX_PRODUCT_PHOTOS,
+  MAX_PRODUCT_VIDEOS,
+} from "@/lib/product-media-limits";
 import { ProductStrainFields } from "@/components/inventario/product-strain-fields";
 import { isCannabisProduct } from "@/lib/product-strain";
 import { productCategoriesFromList, unitMeta, unitOptions } from "@/lib/product-meta";
@@ -39,7 +45,7 @@ import { fetchClubCategories } from "@/lib/data/product-categories";
 import type { ProductGenetics, ProductOrigin } from "@/lib/product-strain";
 import type { Product } from "@/types";
 
-const MAX_PHOTOS = 4;
+const MAX_PHOTOS = MAX_PRODUCT_PHOTOS;
 
 interface ProductFormDialogProps {
   mode: "create" | "edit";
@@ -75,11 +81,12 @@ export function ProductFormDialog({
     product?.origin ?? "",
   );
   const [photos, setPhotos] = React.useState<string[]>(product?.photos ?? []);
-  const [videoUrl, setVideoUrl] = React.useState<string | null>(
-    product?.videoUrl ?? null,
+  const [videoUrls, setVideoUrls] = React.useState<string[]>(() =>
+    product ? productVideoUrls(product) : [],
   );
-  const [videoFile, setVideoFile] = React.useState<File | null>(null);
-  const [videoBlobUrl, setVideoBlobUrl] = React.useState<string | null>(null);
+  const [pendingVideos, setPendingVideos] = React.useState<
+    { file: File; preview: string }[]
+  >([]);
   const videoInputRef = React.useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { data: categories = [] } = useQuery({
@@ -97,22 +104,21 @@ export function ProductFormDialog({
     setGenetics(product?.genetics ?? "");
     setOrigin(product?.origin ?? "");
     setPhotos(product?.photos ?? []);
-    setVideoUrl(product?.videoUrl ?? null);
-    setVideoFile(null);
-    setVideoBlobUrl(null);
+    setVideoUrls(product ? productVideoUrls(product) : []);
+    setPendingVideos((prev) => {
+      prev.forEach((p) => URL.revokeObjectURL(p.preview));
+      return [];
+    });
   }, [open, product]);
 
-  React.useEffect(() => {
-    if (!videoFile) {
-      setVideoBlobUrl(null);
-      return;
-    }
-    const url = URL.createObjectURL(videoFile);
-    setVideoBlobUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [videoFile]);
+  React.useEffect(
+    () => () => {
+      pendingVideos.forEach((p) => URL.revokeObjectURL(p.preview));
+    },
+    [pendingVideos],
+  );
 
-  const videoPreview = videoBlobUrl ?? videoUrl;
+  const totalVideos = videoUrls.length + pendingVideos.length;
 
   function addPhoto(dataUrl: string | null) {
     if (!dataUrl || photos.length >= MAX_PHOTOS) return;
@@ -121,6 +127,38 @@ export function ProductFormDialog({
 
   function removePhoto(index: number) {
     setPhotos((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function addPendingVideo(file: File) {
+    if (totalVideos >= MAX_PRODUCT_VIDEOS) {
+      toast.error(`Máximo ${MAX_PRODUCT_VIDEOS} vídeos por producto`);
+      return;
+    }
+    setPendingVideos((prev) => [
+      ...prev,
+      { file, preview: URL.createObjectURL(file) },
+    ]);
+  }
+
+  async function removeVideoUrl(index: number) {
+    const url = videoUrls[index];
+    if (product?.id && url.startsWith("http")) {
+      const res = await removeStorageFileClient(url);
+      if (res.error) {
+        toast.error("No se pudo quitar el vídeo", { description: res.error });
+        return;
+      }
+    }
+    setVideoUrls((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function removePendingVideo(index: number) {
+    setPendingVideos((prev) => {
+      const next = [...prev];
+      URL.revokeObjectURL(next[index].preview);
+      next.splice(index, 1);
+      return next;
+    });
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -177,7 +215,7 @@ export function ProductFormDialog({
       batch: String(formData.get("batch") || ""),
       expiresAt: String(formData.get("expiresAt") || "") || null,
       photos,
-      videoUrl,
+      videoUrls,
       grower: String(formData.get("grower") || ""),
       extractor: String(formData.get("extractor") || ""),
       thcPercent,
@@ -208,14 +246,33 @@ export function ProductFormDialog({
         return;
       }
 
-      if (videoFile && productId) {
-        const up = await uploadProductVideoClient(productId, videoFile);
-        if (up.error) {
-          toast.error("Producto guardado, pero falló el vídeo", {
-            description: up.error,
-          });
-        } else if (up.url) {
-          setVideoUrl(up.url);
+      if (productId) {
+        let finalVideoUrls = [...videoUrls];
+        for (const pending of pendingVideos) {
+          const up = await uploadProductVideoClient(productId, pending.file);
+          if (up.error) {
+            toast.error("Producto guardado, pero falló un vídeo", {
+              description: up.error,
+            });
+          } else if (up.url) {
+            finalVideoUrls.push(up.url);
+          }
+        }
+
+        if (
+          pendingVideos.length > 0 ||
+          finalVideoUrls.length !== videoUrls.length
+        ) {
+          const sync = await syncProductMediaClient(
+            productId,
+            photos,
+            finalVideoUrls,
+          );
+          if (sync.error) {
+            toast.error("Producto guardado, pero falló sincronizar vídeos", {
+              description: sync.error,
+            });
+          }
         }
       }
 
@@ -235,30 +292,6 @@ export function ProductFormDialog({
     }
   }
 
-  async function handleRemoveVideo() {
-    if (videoFile) {
-      setVideoFile(null);
-      return;
-    }
-    if (!product?.id || !videoUrl) {
-      setVideoUrl(null);
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await removeProductVideoClient(product.id);
-      if (res.error) {
-        toast.error("No se pudo quitar el vídeo", { description: res.error });
-        return;
-      }
-      setVideoUrl(null);
-      setVideoFile(null);
-      toast.success("Vídeo eliminado");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   const title = mode === "create" ? "Nuevo producto" : "Editar producto";
 
   const dialog = (
@@ -270,7 +303,7 @@ export function ProductFormDialog({
           <DialogDescription>
             {mode === "create"
               ? "Añade una referencia al inventario de tu club."
-              : "Modifica datos, fotos o vídeo del producto."}
+              : "Modifica datos, fotos y vídeos del producto."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
@@ -438,59 +471,73 @@ export function ProductFormDialog({
 
           <div className="space-y-2">
             <Label className="flex items-center gap-1.5">
-              <Video className="h-4 w-4" /> Vídeo (se reproduce en bucle en el menú)
+              <Video className="h-4 w-4" /> Vídeos (máx. {MAX_PRODUCT_VIDEOS})
             </Label>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {videoUrls.map((url, i) => (
+                <div key={url} className="relative overflow-hidden rounded-xl border border-border">
+                  <video
+                    src={url}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="aspect-video w-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeVideoUrl(i)}
+                    className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-background/90 text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+              {pendingVideos.map((pending, i) => (
+                <div key={pending.preview} className="relative overflow-hidden rounded-xl border border-dashed border-primary/40">
+                  <video
+                    src={pending.preview}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    className="aspect-video w-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removePendingVideo(i)}
+                    className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-background/90 text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
             <input
               ref={videoInputRef}
               type="file"
               accept="video/*"
+              multiple
               className="hidden"
               onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) setVideoFile(f);
+                const files = Array.from(e.target.files ?? []);
+                for (const f of files) addPendingVideo(f);
                 e.target.value = "";
               }}
             />
-            {videoPreview ? (
-              <div className="relative overflow-hidden rounded-xl border border-border">
-                <video
-                  src={videoPreview}
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  className="aspect-video w-full object-cover"
-                />
-                <div className="absolute right-2 top-2 flex gap-1">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => videoInputRef.current?.click()}
-                  >
-                    Cambiar
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="destructive"
-                    onClick={handleRemoveVideo}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            ) : (
+            {totalVideos < MAX_PRODUCT_VIDEOS && (
               <Button
                 type="button"
                 variant="outline"
                 className="w-full"
                 onClick={() => videoInputRef.current?.click()}
               >
-                <Video className="h-4 w-4" /> Subir vídeo
+                <Video className="h-4 w-4" /> Añadir vídeo
               </Button>
             )}
-            <p className="text-xs text-muted-foreground">Máximo 25 MB · MP4, WebM…</p>
+            <p className="text-xs text-muted-foreground">
+              Máximo 25 MB por vídeo · MP4, WebM… Se reproducen en bucle en el menú.
+            </p>
           </div>
 
           <DialogFooter>

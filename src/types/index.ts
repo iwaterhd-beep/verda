@@ -69,6 +69,8 @@ export interface Product {
   batch: string;
   expiresAt: string | null;
   photos?: string[];
+  videoUrls?: string[];
+  /** @deprecated Usa videoUrls */
   videoUrl?: string | null;
   grower?: string | null;
   extractor?: string | null;

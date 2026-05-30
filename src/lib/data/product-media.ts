@@ -1,9 +1,14 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import {
+  MAX_PRODUCT_VIDEOS,
+  MAX_VIDEO_BYTES,
+} from "@/lib/product-media-limits";
+import { storagePathFromPublicUrl } from "@/lib/product-media-storage";
+import type { Product } from "@/types";
 
 const BUCKET = "product-media";
-const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 
 async function staffClubId() {
   const supabase = createClient();
@@ -25,6 +30,22 @@ async function staffClubId() {
   return { clubId: profile.club_id as string, supabase };
 }
 
+export function productVideoUrls(
+  product: Pick<Product, "videoUrls" | "videoUrl">,
+): string[] {
+  if (product.videoUrls?.length) return product.videoUrls;
+  if (product.videoUrl) return [product.videoUrl];
+  return [];
+}
+
+export function productPhotos(product: Pick<Product, "photos">): string[] {
+  return product.photos ?? [];
+}
+
+export function productHasMedia(product: Product) {
+  return productPhotos(product).length > 0 || productVideoUrls(product).length > 0;
+}
+
 export async function uploadProductVideoClient(
   productId: string,
   file: File,
@@ -40,11 +61,11 @@ export async function uploadProductVideoClient(
   if ("error" in auth) return { error: auth.error };
 
   const ext = file.name.split(".").pop()?.toLowerCase() || "mp4";
-  const path = `${auth.clubId}/${productId}/video.${ext}`;
+  const path = `${auth.clubId}/${productId}/video-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
 
   const { error: uploadError } = await auth.supabase.storage
     .from(BUCKET)
-    .upload(path, file, { upsert: true, contentType: file.type });
+    .upload(path, file, { upsert: false, contentType: file.type });
 
   if (uploadError) return { error: uploadError.message };
 
@@ -52,58 +73,55 @@ export async function uploadProductVideoClient(
     data: { publicUrl },
   } = auth.supabase.storage.from(BUCKET).getPublicUrl(path);
 
-  const { error: updateError } = await auth.supabase
-    .from("products")
-    .update({ video_url: publicUrl })
-    .eq("club_id", auth.clubId)
-    .eq("id", productId);
-
-  if (updateError) return { error: updateError.message };
   return { url: publicUrl };
 }
 
-export async function removeProductVideoClient(
-  productId: string,
+export async function removeStorageFileClient(
+  url: string,
 ): Promise<{ error?: string }> {
+  const path = storagePathFromPublicUrl(url);
+  if (!path) return {};
+
   const auth = await staffClubId();
   if ("error" in auth) return { error: auth.error };
 
-  const { data: product } = await auth.supabase
-    .from("products")
-    .select("video_url")
-    .eq("club_id", auth.clubId)
-    .eq("id", productId)
-    .maybeSingle();
+  const { error } = await auth.supabase.storage.from(BUCKET).remove([path]);
+  if (error) return { error: error.message };
+  return {};
+}
 
-  const { error: updateError } = await auth.supabase
+export async function syncProductMediaClient(
+  productId: string,
+  photos: string[],
+  videoUrls: string[],
+): Promise<{ error?: string }> {
+  if (videoUrls.length > MAX_PRODUCT_VIDEOS) {
+    return { error: `Máximo ${MAX_PRODUCT_VIDEOS} vídeos por producto.` };
+  }
+
+  const auth = await staffClubId();
+  if ("error" in auth) return { error: auth.error };
+
+  const payload: Record<string, unknown> = {
+    photos,
+    video_urls: videoUrls,
+    video_url: videoUrls[0] ?? null,
+  };
+
+  let { error } = await auth.supabase
     .from("products")
-    .update({ video_url: null })
+    .update(payload)
     .eq("club_id", auth.clubId)
     .eq("id", productId);
 
-  if (updateError) return { error: updateError.message };
-
-  if (product?.video_url) {
-    const marker = `/object/public/${BUCKET}/`;
-    const altMarker = `/${BUCKET}/`;
-    let storagePath: string | null = null;
-    const idx = product.video_url.indexOf(marker);
-    if (idx !== -1) {
-      storagePath = decodeURIComponent(
-        product.video_url.slice(idx + marker.length).split("?")[0],
-      );
-    } else {
-      const idx2 = product.video_url.indexOf(altMarker);
-      if (idx2 !== -1) {
-        storagePath = decodeURIComponent(
-          product.video_url.slice(idx2 + altMarker.length).split("?")[0],
-        );
-      }
-    }
-    if (storagePath) {
-      await auth.supabase.storage.from(BUCKET).remove([storagePath]);
-    }
+  if (error && /video_urls/i.test(error.message)) {
+    ({ error } = await auth.supabase
+      .from("products")
+      .update({ photos, video_url: videoUrls[0] ?? null })
+      .eq("club_id", auth.clubId)
+      .eq("id", productId));
   }
 
+  if (error) return { error: error.message };
   return {};
 }

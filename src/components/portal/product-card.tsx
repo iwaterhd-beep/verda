@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/store/use-cart";
 import { getCategoryDisplay } from "@/lib/product-meta";
 import { fetchClubCategories } from "@/lib/data/product-categories";
+import { productHasMedia } from "@/lib/data/product-media";
 import {
   formatThcPercent,
   geneticsLabel,
@@ -15,6 +16,7 @@ import {
   originLabel,
 } from "@/lib/product-strain";
 import { formatCurrency } from "@/lib/utils";
+import { ProductMediaGallery } from "@/components/portal/product-media-gallery";
 import type { Product } from "@/types";
 
 export function ProductCard({ product }: { product: Product }) {
@@ -29,7 +31,7 @@ export function ProductCard({ product }: { product: Product }) {
   const add = useCart((s) => s.add);
   const decrement = useCart((s) => s.decrement);
   const soldOut = product.stock <= 0;
-  const hasMedia = Boolean(product.videoUrl || product.photos?.length);
+  const hasMedia = productHasMedia(product);
   const showStrain = isCannabisProduct(product.category, categories);
   const thc = formatThcPercent(product.thcPercent);
   const genetics = geneticsLabel(product.genetics);
@@ -37,27 +39,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-border bg-card">
-      {hasMedia && (
-        <div className="relative aspect-[16/9] w-full bg-secondary">
-          {product.videoUrl ? (
-            <video
-              src={product.videoUrl}
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={product.photos![0]}
-              alt={product.name}
-              className="h-full w-full object-cover"
-            />
-          )}
-        </div>
-      )}
+      {hasMedia && <ProductMediaGallery product={product} />}
 
       <div className="flex items-start gap-3 p-3">
         {!hasMedia && (
@@ -139,20 +121,6 @@ export function ProductCard({ product }: { product: Product }) {
           </div>
         )}
       </div>
-
-      {product.photos && product.photos.length > 1 && (
-        <div className="flex gap-1.5 overflow-x-auto border-t border-border/60 px-3 py-2">
-          {product.photos.map((url, i) => (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={i}
-              src={url}
-              alt={`${product.name} ${i + 1}`}
-              className="h-12 w-12 shrink-0 rounded-lg object-cover"
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

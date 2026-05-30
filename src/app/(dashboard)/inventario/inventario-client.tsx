@@ -24,6 +24,7 @@ import {
 import { DeleteProductDialog } from "@/components/inventario/delete-product-dialog";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { getCategoryDisplay } from "@/lib/product-meta";
+import { productMediaThumb } from "@/components/portal/product-media-gallery";
 import { fetchClubCategories } from "@/lib/data/product-categories";
 import type { Product } from "@/types";
 
@@ -140,25 +141,25 @@ export function InventarioClient() {
                 ) : (
                   products.map((p) => {
                     const low = p.stock < p.lowStockThreshold;
-                    const thumb = p.videoUrl ?? p.photos?.[0];
+                    const thumb = productMediaThumb(p);
                     return (
                       <TableRow key={p.id}>
                         <TableCell className="pl-6">
                           <div className="flex items-center gap-3">
                             <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-secondary">
-                              {p.videoUrl ? (
+                              {thumb.type === "video" && thumb.url ? (
                                 <video
-                                  src={p.videoUrl}
+                                  src={thumb.url}
                                   autoPlay
                                   loop
                                   muted
                                   playsInline
                                   className="h-full w-full object-cover"
                                 />
-                              ) : thumb ? (
+                              ) : thumb.type === "photo" && thumb.url ? (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
-                                  src={thumb}
+                                  src={thumb.url}
                                   alt=""
                                   className="h-full w-full object-cover"
                                 />
