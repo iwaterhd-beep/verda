@@ -60,6 +60,8 @@ export interface Product {
   pricePerUnit: number;
   batch: string;
   expiresAt: string | null;
+  photos?: string[];
+  videoUrl?: string | null;
 }
 
 export interface Sale {

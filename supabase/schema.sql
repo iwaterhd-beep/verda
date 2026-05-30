@@ -145,6 +145,8 @@ create table if not exists public.products (
   price_per_unit       numeric(10,2) not null default 0,
   batch                text,
   expires_at           date,
+  photos               text[] not null default '{}',
+  video_url            text,
   created_at           timestamptz default now(),
   primary key (club_id, id)
 );
@@ -361,3 +363,8 @@ drop policy if exists "club products" on public.products;
 create policy "club products" on public.products
   for all using (club_id = public.my_club_id() and public.is_staff())
   with check (club_id = public.my_club_id() and public.is_staff());
+
+drop policy if exists "member read club products" on public.products;
+create policy "member read club products" on public.products
+  for select to authenticated
+  using (club_id = public.my_club_id());

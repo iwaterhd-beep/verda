@@ -37,7 +37,14 @@ export default function ReservasPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="space-y-3 lg:col-span-2">
-          {reservations.map((r) => {
+          {reservations.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-sm text-muted-foreground">
+                No hay reservas todavía.
+              </CardContent>
+            </Card>
+          ) : (
+            reservations.map((r) => {
             const s = statusMap[r.status];
             return (
               <Card key={r.id}>
@@ -70,7 +77,8 @@ export default function ReservasPage() {
                 </CardContent>
               </Card>
             );
-          })}
+          })
+          )}
         </div>
 
         <Card className="h-fit">
@@ -85,9 +93,7 @@ export default function ReservasPage() {
                 className="flex items-center justify-between rounded-xl border border-border/60 p-3"
               >
                 <span className="text-sm font-medium">{space}</span>
-                <Badge variant={i % 3 === 0 ? "warning" : "success"}>
-                  {i % 3 === 0 ? "Casi lleno" : "Disponible"}
-                </Badge>
+                <Badge variant="secondary">Disponible</Badge>
               </div>
             ))}
           </CardContent>

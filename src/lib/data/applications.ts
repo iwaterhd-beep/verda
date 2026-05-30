@@ -44,11 +44,12 @@ function toApplication(r: Row): MemberApplication {
 export type NewApplication = Omit<
   MemberApplication,
   "id" | "status" | "submittedAt" | "reviewedAt" | "rejectionReason"
->;
+> & { clubId?: string };
 
 export async function submitApplication(data: NewApplication) {
   const supabase = createClient();
   const { error } = await supabase.from("member_applications").insert({
+    club_id: data.clubId ?? null,
     full_name: data.fullName,
     document_id: data.documentId,
     birth_date: data.birthDate,

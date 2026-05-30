@@ -29,12 +29,13 @@ import { formatDate } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Legal y RGPD" };
 
-const auditLog = [
-  { id: 1, actor: "Álex Ríos", action: "Exportó datos de socio (RGPD)", at: "2026-05-29T16:20:00", level: "info" },
-  { id: 2, actor: "Sistema", action: "Bloqueo automático: membresía caducada", at: "2026-05-29T08:00:00", level: "warn" },
-  { id: 3, actor: "María López", action: "Modificó permisos de empleado", at: "2026-05-28T14:11:00", level: "info" },
-  { id: 4, actor: "Álex Ríos", action: "Eliminó socio (derecho al olvido)", at: "2026-05-27T10:05:00", level: "danger" },
-];
+const auditLog: {
+  id: number;
+  actor: string;
+  action: string;
+  at: string;
+  level: "info" | "warn" | "danger";
+}[] = [];
 
 export default function LegalPage() {
   return (
@@ -52,14 +53,14 @@ export default function LegalPage() {
         <ComplianceStat
           icon={FileSignature}
           label="Consentimientos firmados"
-          value="96%"
-          detail="123 de 128 socios"
+          value="0%"
+          detail="0 de 0 socios"
         />
         <ComplianceStat
           icon={ShieldCheck}
           label="Verificación de edad"
-          value="100%"
-          detail="Todos los socios activos"
+          value="0%"
+          detail="Sin socios activos"
         />
         <ComplianceStat
           icon={Lock}
@@ -85,7 +86,17 @@ export default function LegalPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {auditLog.map((l) => (
+                {auditLog.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={3}
+                      className="py-10 text-center text-sm text-muted-foreground"
+                    >
+                      Sin registros de auditoría.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  auditLog.map((l) => (
                   <TableRow key={l.id}>
                     <TableCell className="pl-6 font-medium">{l.actor}</TableCell>
                     <TableCell>
@@ -106,7 +117,8 @@ export default function LegalPage() {
                       {formatDate(l.at, true)}
                     </TableCell>
                   </TableRow>
-                ))}
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>

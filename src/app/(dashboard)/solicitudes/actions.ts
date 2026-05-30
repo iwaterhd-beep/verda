@@ -41,6 +41,12 @@ export async function approveApplicationAction(
   if (appErr || !app) return { error: "Solicitud no encontrada." };
   if (!app.email) return { error: "La solicitud no tiene email." };
 
+  const appClubId = (app.club_id as string | null) ?? clubId;
+  if (!appClubId) return { error: "La solicitud no está vinculada a un club." };
+  if (app.club_id && clubId && app.club_id !== clubId) {
+    return { error: "Esta solicitud pertenece a otro club." };
+  }
+
   const admin = createAdminClient();
   const password = tempPassword();
 
@@ -48,7 +54,7 @@ export async function approveApplicationAction(
     email: app.email,
     password,
     email_confirm: true,
-    user_metadata: { name: app.full_name, club_id: clubId, role: "MEMBER" },
+    user_metadata: { name: app.full_name, club_id: appClubId, role: "MEMBER" },
   });
 
   if (createErr || !created?.user) {
@@ -63,7 +69,7 @@ export async function approveApplicationAction(
   const userId = created.user.id;
 
   const { error: memberErr } = await admin.from("members").insert({
-    club_id: clubId,
+    club_id: appClubId,
     user_id: userId,
     full_name: app.full_name,
     email: app.email,
@@ -94,7 +100,7 @@ export async function approveApplicationAction(
   // Asegura perfil MEMBER aunque el trigger de Supabase esté desactualizado.
   await admin.from("profiles").upsert({
     id: userId,
-    club_id: clubId,
+    club_id: appClubId,
     name: app.full_name,
     email: app.email,
     role: "MEMBER",

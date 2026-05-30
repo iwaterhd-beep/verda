@@ -1,9 +1,26 @@
-import { members } from "@/lib/mock-data";
 import type { Member } from "@/types";
 
-// Socio "autenticado" para la demo del portal.
-// En producción vendría de la sesión (Supabase Auth) filtrando por su id.
-export const currentMember: Member = members[0];
+/** Fallback mínimo cuando no hay sesión de socio (valores en cero). */
+export const currentMember: Member = {
+  id: "",
+  fullName: "Socio",
+  email: "",
+  phone: "",
+  documentType: "DNI",
+  documentId: "",
+  birthDate: "2000-01-01",
+  status: "PENDING",
+  membershipPlan: "BASIC",
+  joinedAt: "",
+  expiresAt: "",
+  qrCode: "—",
+  consumptionLimit: 40,
+  consumedThisMonth: 0,
+  signatureSigned: false,
+  ageVerified: false,
+  avatarSeed: "Socio",
+  walletBalance: 0,
+};
 
 export function planLimit(member: Member) {
   return member.consumptionLimit;

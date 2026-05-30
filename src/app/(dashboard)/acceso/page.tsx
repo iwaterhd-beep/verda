@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ScanLine, LogIn, LogOut, ShieldAlert } from "lucide-react";
+import { ScanLine, LogIn, LogOut } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import {
   Card,
@@ -43,9 +43,9 @@ export default function AccesoPage() {
               <ScanLine className="h-20 w-20 text-primary/70" />
             </div>
             <div className="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
-              <Stat label="Dentro ahora" value="34" />
-              <Stat label="Aforo" value="58%" />
-              <Stat label="Hoy" value="47" />
+              <Stat label="Dentro ahora" value="0" />
+              <Stat label="Aforo" value="0%" />
+              <Stat label="Hoy" value="0" />
             </div>
           </CardContent>
         </Card>
@@ -67,65 +67,62 @@ export default function AccesoPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {accessLogs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell className="pl-6">
-                      <div className="flex items-center gap-2.5">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={avatarUrl(log.memberName)} />
-                          <AvatarFallback>
-                            {log.memberName.slice(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm font-medium">
-                          {log.memberName}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {log.type === "CHECK_IN" ? (
-                        <Badge variant="success">
-                          <LogIn className="h-3 w-3" /> Entrada
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary">
-                          <LogOut className="h-3 w-3" /> Salida
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {log.method}
-                    </TableCell>
-                    <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
-                      {log.location}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
-                      {new Date(log.timestamp).toLocaleTimeString("es-ES", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                {accessLogs.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="py-10 text-center text-sm text-muted-foreground"
+                    >
+                      No hay registros de acceso hoy.
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  accessLogs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="pl-6">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={avatarUrl(log.memberName)} />
+                            <AvatarFallback>
+                              {log.memberName.slice(0, 2)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm font-medium">
+                            {log.memberName}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {log.type === "CHECK_IN" ? (
+                          <Badge variant="success">
+                            <LogIn className="h-3 w-3" /> Entrada
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary">
+                            <LogOut className="h-3 w-3" /> Salida
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {log.method}
+                      </TableCell>
+                      <TableCell className="hidden text-sm text-muted-foreground sm:table-cell">
+                        {log.location}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {new Date(log.timestamp).toLocaleTimeString("es-ES", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
       </div>
-
-      <Card className="mt-4 border-destructive/30 bg-destructive/5">
-        <CardContent className="flex items-center gap-4 py-4">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-destructive/15 text-destructive">
-            <ShieldAlert className="h-5 w-5" />
-          </span>
-          <div>
-            <p className="text-sm font-medium">Acceso bloqueado: Pablo Moreno</p>
-            <p className="text-xs text-muted-foreground">
-              Membresía caducada el 10 abr 2026. Renovación requerida en recepción.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

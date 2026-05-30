@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { UserPlus, Loader2 } from "lucide-react";
+import { UserPlus, Loader2, Link2 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -23,7 +23,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createMember } from "@/lib/data/members";
+import { MemberInvitePanel } from "@/components/members/member-invite-panel";
 import type { Member } from "@/types";
 
 export function CreateMemberDialog() {
@@ -72,77 +74,94 @@ export function CreateMemberDialog() {
           <UserPlus className="h-4 w-4" /> Nuevo socio
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Alta de socio</DialogTitle>
+          <DialogTitle>Nuevo socio</DialogTitle>
           <DialogDescription>
-            Registra un nuevo socio. Quedará pendiente de verificación de edad y
-            firma del consentimiento.
+            Invita a alguien con un enlace o regístralo manualmente en el club.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="fullName">Nombre completo</Label>
-            <Input id="fullName" name="fullName" placeholder="Nombre y apellidos" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" type="email" placeholder="email@…" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="phone">Teléfono</Label>
-              <Input id="phone" name="phone" placeholder="+34…" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-2">
-              <Label>Documento</Label>
-              <Select name="documentType" defaultValue="DNI">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="DNI">DNI</SelectItem>
-                  <SelectItem value="NIE">NIE</SelectItem>
-                  <SelectItem value="PASSPORT">Pasaporte</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="documentId">Nº documento</Label>
-              <Input id="documentId" name="documentId" placeholder="12345678A" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="grid gap-2">
-              <Label htmlFor="birthDate">Fecha de nacimiento</Label>
-              <Input id="birthDate" name="birthDate" type="date" />
-            </div>
-            <div className="grid gap-2">
-              <Label>Plan</Label>
-              <Select name="plan" defaultValue="BASIC">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="BASIC">Básico</SelectItem>
-                  <SelectItem value="PREMIUM">Premium</SelectItem>
-                  <SelectItem value="VIP">VIP</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter className="mt-2">
-            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-              Crear socio
-            </Button>
-          </DialogFooter>
-        </form>
+
+        <Tabs defaultValue="invite">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="invite">
+              <Link2 className="mr-1.5 h-4 w-4" /> Enlace de invitación
+            </TabsTrigger>
+            <TabsTrigger value="manual">
+              <UserPlus className="mr-1.5 h-4 w-4" /> Alta manual
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="invite" className="mt-4">
+            <MemberInvitePanel />
+          </TabsContent>
+
+          <TabsContent value="manual" className="mt-4">
+            <form onSubmit={handleSubmit} className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="fullName">Nombre completo</Label>
+                <Input id="fullName" name="fullName" placeholder="Nombre y apellidos" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" name="email" type="email" placeholder="email@…" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="phone">Teléfono</Label>
+                  <Input id="phone" name="phone" placeholder="+34…" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <Label>Documento</Label>
+                  <Select name="documentType" defaultValue="DNI">
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DNI">DNI</SelectItem>
+                      <SelectItem value="NIE">NIE</SelectItem>
+                      <SelectItem value="PASSPORT">Pasaporte</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="documentId">Nº documento</Label>
+                  <Input id="documentId" name="documentId" placeholder="12345678A" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-2">
+                  <Label htmlFor="birthDate">Fecha de nacimiento</Label>
+                  <Input id="birthDate" name="birthDate" type="date" />
+                </div>
+                <div className="grid gap-2">
+                  <Label>Plan</Label>
+                  <Select name="plan" defaultValue="BASIC">
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="BASIC">Básico</SelectItem>
+                      <SelectItem value="PREMIUM">Premium</SelectItem>
+                      <SelectItem value="VIP">VIP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter className="mt-2 px-0">
+                <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Crear socio
+                </Button>
+              </DialogFooter>
+            </form>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

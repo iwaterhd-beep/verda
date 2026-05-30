@@ -11,14 +11,18 @@ import { ProductCard } from "@/components/portal/product-card";
 import { useQuery } from "@tanstack/react-query";
 import { currentMember } from "@/lib/current-member";
 import { fetchMyMember } from "@/lib/data/members";
-import { products } from "@/lib/mock-data";
+import { fetchClubProducts } from "@/lib/data/products";
 import { avatarUrl, formatCurrency } from "@/lib/utils";
 
 export default function PortalHomePage() {
   const { data } = useQuery({ queryKey: ["my-member"], queryFn: fetchMyMember });
   const m = data ?? currentMember;
   const pct = Math.round((m.consumedThisMonth / m.consumptionLimit) * 100);
-  const featured = products.filter((p) => p.stock > 0).slice(0, 3);
+  const { data: menuProducts = [] } = useQuery({
+    queryKey: ["portal-products"],
+    queryFn: fetchClubProducts,
+  });
+  const featured = menuProducts.filter((p) => p.stock > 0).slice(0, 3);
 
   return (
     <div className="space-y-5">
@@ -126,9 +130,13 @@ export default function PortalHomePage() {
           </Link>
         </div>
         <div className="space-y-3">
-          {featured.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
+          {featured.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No hay productos disponibles en el menú.
+            </p>
+          ) : (
+            featured.map((p) => <ProductCard key={p.id} product={p} />)
+          )}
         </div>
       </div>
     </div>

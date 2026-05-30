@@ -1,11 +1,12 @@
 "use client";
 
 import * as React from "react";
-import { Search } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { ProductCard } from "@/components/portal/product-card";
 import { CartBar } from "@/components/portal/cart-bar";
-import { products } from "@/lib/mock-data";
+import { fetchClubProducts } from "@/lib/data/products";
 import { categoryMeta, categoryOrder } from "@/lib/product-meta";
 import { cn } from "@/lib/utils";
 import type { Product } from "@/types";
@@ -15,6 +16,11 @@ export default function MenuPage() {
   const [category, setCategory] = React.useState<Product["category"] | "ALL">(
     "ALL",
   );
+
+  const { data: products = [], isLoading, error } = useQuery({
+    queryKey: ["portal-products"],
+    queryFn: fetchClubProducts,
+  });
 
   const availableCategories = categoryOrder.filter((c) =>
     products.some((p) => p.category === c),
@@ -55,16 +61,28 @@ export default function MenuPage() {
         ))}
       </div>
 
-      <div className="space-y-3">
-        {filtered.map((p) => (
-          <ProductCard key={p.id} product={p} />
-        ))}
-        {filtered.length === 0 && (
-          <p className="py-12 text-center text-sm text-muted-foreground">
-            No hay productos para esta búsqueda.
-          </p>
-        )}
-      </div>
+      {isLoading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : error ? (
+        <p className="py-12 text-center text-sm text-destructive">
+          No se pudo cargar el menú.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((p) => (
+            <ProductCard key={p.id} product={p} />
+          ))}
+          {filtered.length === 0 && (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              {products.length === 0
+                ? "Tu club aún no ha publicado productos en el menú."
+                : "No hay productos para esta búsqueda."}
+            </p>
+          )}
+        </div>
+      )}
 
       <CartBar />
     </div>

@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Package, AlertTriangle, Loader2 } from "lucide-react";
+import { Package, AlertTriangle, Loader2, Pencil, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,9 +16,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { fetchClubProducts } from "@/lib/data/products";
-import { ensureClubCatalogAction } from "@/app/(dashboard)/inventario/actions";
 import { CreateProductDialog } from "@/components/inventario/create-product-dialog";
+import {
+  EditProductDialog,
+} from "@/components/inventario/product-form-dialog";
+import { DeleteProductDialog } from "@/components/inventario/delete-product-dialog";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import type { Product } from "@/types";
 
 const categoryLabels: Record<string, string> = {
   FLOR: "Flor",
@@ -30,17 +34,12 @@ const categoryLabels: Record<string, string> = {
 
 export function InventarioClient() {
   const queryClient = useQueryClient();
-  const [initDone, setInitDone] = React.useState(false);
+  const [editProduct, setEditProduct] = React.useState<Product | null>(null);
+  const [deleteProduct, setDeleteProduct] = React.useState<Product | null>(null);
 
   const { data: products = [], isLoading, error } = useQuery({
     queryKey: ["club-products"],
-    queryFn: async () => {
-      if (!initDone) {
-        await ensureClubCatalogAction();
-        setInitDone(true);
-      }
-      return fetchClubProducts();
-    },
+    queryFn: fetchClubProducts,
   });
 
   React.useEffect(() => {
@@ -60,6 +59,20 @@ export function InventarioClient() {
       >
         <CreateProductDialog />
       </PageHeader>
+
+      {editProduct && (
+        <EditProductDialog
+          product={editProduct}
+          open={Boolean(editProduct)}
+          onOpenChange={(open) => !open && setEditProduct(null)}
+        />
+      )}
+
+      <DeleteProductDialog
+        product={deleteProduct}
+        open={Boolean(deleteProduct)}
+        onOpenChange={(open) => !open && setDeleteProduct(null)}
+      />
 
       {isLoading ? (
         <Card>
@@ -109,55 +122,115 @@ export function InventarioClient() {
                   <TableHead>Stock</TableHead>
                   <TableHead className="hidden lg:table-cell">Caducidad</TableHead>
                   <TableHead className="text-right">Precio</TableHead>
+                  <TableHead className="w-[100px] pr-6 text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.map((p) => {
-                  const low = p.stock < p.lowStockThreshold;
-                  return (
-                    <TableRow key={p.id}>
-                      <TableCell className="pl-6">
-                        <p className="font-medium">{p.name}</p>
-                        <p className="font-mono text-xs text-muted-foreground">
-                          {p.sku}
-                        </p>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {categoryLabels[p.category]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden font-mono text-xs text-muted-foreground md:table-cell">
-                        {p.batch}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={
-                              low
-                                ? "font-semibold text-[hsl(var(--warning))]"
-                                : "font-medium"
-                            }
-                          >
-                            {p.unit === "g" ? p.stock.toFixed(2) : p.stock}{" "}
-                            {p.unit}
-                          </span>
-                          {low && (
-                            <Badge variant="warning" className="h-5">
-                              <AlertTriangle className="h-3 w-3" /> Bajo
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden text-sm text-muted-foreground lg:table-cell">
-                        {p.expiresAt ? formatDate(p.expiresAt) : "—"}
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {formatCurrency(p.pricePerUnit)}/{p.unit}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                {products.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="py-12 text-center text-sm text-muted-foreground"
+                    >
+                      No hay productos. Crea el primero con &quot;Nuevo producto&quot;.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  products.map((p) => {
+                    const low = p.stock < p.lowStockThreshold;
+                    const thumb = p.videoUrl ?? p.photos?.[0];
+                    return (
+                      <TableRow key={p.id}>
+                        <TableCell className="pl-6">
+                          <div className="flex items-center gap-3">
+                            <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-secondary">
+                              {p.videoUrl ? (
+                                <video
+                                  src={p.videoUrl}
+                                  autoPlay
+                                  loop
+                                  muted
+                                  playsInline
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : thumb ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={thumb}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <span className="grid h-full w-full place-items-center text-xs text-muted-foreground">
+                                  —
+                                </span>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-medium">{p.name}</p>
+                              <p className="font-mono text-xs text-muted-foreground">
+                                {p.sku}
+                              </p>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {categoryLabels[p.category]}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden font-mono text-xs text-muted-foreground md:table-cell">
+                          {p.batch}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={
+                                low
+                                  ? "font-semibold text-[hsl(var(--warning))]"
+                                  : "font-medium"
+                              }
+                            >
+                              {p.unit === "g" ? p.stock.toFixed(2) : p.stock}{" "}
+                              {p.unit}
+                            </span>
+                            {low && (
+                              <Badge variant="warning" className="h-5">
+                                <AlertTriangle className="h-3 w-3" /> Bajo
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden text-sm text-muted-foreground lg:table-cell">
+                          {p.expiresAt ? formatDate(p.expiresAt) : "—"}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          {formatCurrency(p.pricePerUnit)}/{p.unit}
+                        </TableCell>
+                        <TableCell className="pr-6 text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setEditProduct(p)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => setDeleteProduct(p)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
               </TableBody>
             </Table>
           </Card>

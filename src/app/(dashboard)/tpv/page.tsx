@@ -55,21 +55,27 @@ export default function TpvPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {products.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => add(p.id, p.name, p.pricePerUnit)}
-                className="group flex flex-col items-start rounded-2xl border border-border bg-card p-4 text-left transition-all hover:border-primary/40 hover:shadow-glow active:scale-[0.98]"
-              >
-                <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
-                  <Plus className="h-5 w-5" />
-                </span>
-                <p className="mt-3 font-medium leading-tight">{p.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {formatCurrency(p.pricePerUnit)}/{p.unit}
-                </p>
-              </button>
-            ))}
+            {products.length === 0 ? (
+              <div className="col-span-full rounded-2xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
+                No hay productos. Añade inventario en la sección Inventario.
+              </div>
+            ) : (
+              products.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => add(p.id, p.name, p.pricePerUnit)}
+                  className="group flex flex-col items-start rounded-2xl border border-border bg-card p-4 text-left transition-all hover:border-primary/40 hover:shadow-glow active:scale-[0.98]"
+                >
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+                    <Plus className="h-5 w-5" />
+                  </span>
+                  <p className="mt-3 font-medium leading-tight">{p.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatCurrency(p.pricePerUnit)}/{p.unit}
+                  </p>
+                </button>
+              ))
+            )}
           </div>
 
           <Card className="mt-4">
@@ -77,7 +83,12 @@ export default function TpvPage() {
               <CardTitle className="text-base">Últimos tickets</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {sales.map((s) => (
+              {sales.length === 0 ? (
+                <p className="py-6 text-center text-sm text-muted-foreground">
+                  Sin ventas registradas.
+                </p>
+              ) : (
+                sales.map((s) => (
                 <div
                   key={s.id}
                   className="flex items-center gap-3 rounded-xl border border-border/60 p-3"
@@ -97,7 +108,8 @@ export default function TpvPage() {
                     <span className="font-medium">{formatCurrency(s.total)}</span>
                   )}
                 </div>
-              ))}
+                ))
+              )}
             </CardContent>
           </Card>
         </div>

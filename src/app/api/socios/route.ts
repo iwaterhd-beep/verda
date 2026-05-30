@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { members } from "@/lib/mock-data";
 import type { Member } from "@/types";
 
 // NOTA: almacén en memoria para la demo. En producción se reemplaza por Prisma:
 //   const data = await prisma.member.findMany({ where: { clubId } })
-const store: Member[] = [...members];
+const store: Member[] = [];
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
