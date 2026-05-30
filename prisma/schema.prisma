@@ -1,0 +1,373 @@
+// ──────────────────────────────────────────────────────────────
+// Verda — Prisma schema
+// Multi-tenant SaaS para clubes cannábicos.
+// Cada entidad de negocio pertenece a un Club (tenant) para aislamiento.
+// ──────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  CLUB_ADMIN
+  EMPLOYEE
+  MEMBER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  PENDING
+  EXPIRED
+  SUSPENDED
+  BLOCKED
+}
+
+enum MembershipPlan {
+  BASIC
+  PREMIUM
+  VIP
+}
+
+enum DocumentType {
+  DNI
+  NIE
+  PASSPORT
+}
+
+enum AccessType {
+  CHECK_IN
+  CHECK_OUT
+}
+
+enum AccessMethod {
+  QR
+  NFC
+  MANUAL
+}
+
+enum ProductCategory {
+  FLOR
+  EXTRACTO
+  COMESTIBLE
+  MERCH
+  OTRO
+}
+
+enum StockMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  WASTE
+}
+
+enum PaymentMethod {
+  CASH
+  WALLET
+  CRYPTO
+}
+
+enum SaleStatus {
+  COMPLETED
+  REFUNDED
+}
+
+enum ReservationStatus {
+  CONFIRMED
+  PENDING
+  CANCELLED
+}
+
+enum NotificationChannel {
+  PUSH
+  EMAIL
+  INTERNAL
+}
+
+// ─── Tenancy & Auth ───────────────────────────────────────────
+
+model Club {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  city          String?
+  brandColor    String   @default("#22c55e")
+  logoUrl       String?
+  plan          String   @default("PRO")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  users         User[]
+  members       Member[]
+  products      Product[]
+  sales         Sale[]
+  reservations  Reservation[]
+  spaces        Space[]
+  accessLogs    AccessLog[]
+  notifications Notification[]
+  auditLogs     AuditLog[]
+
+  @@index([slug])
+}
+
+model User {
+  id            String    @id @default(cuid())
+  clubId        String?
+  email         String    @unique
+  name          String
+  passwordHash  String?
+  role          Role      @default(EMPLOYEE)
+  avatarUrl     String?
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String?
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  club          Club?     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  auditLogs     AuditLog[]
+
+  @@index([clubId])
+}
+
+// ─── Members & Memberships ────────────────────────────────────
+
+model Member {
+  id               String           @id @default(cuid())
+  clubId           String
+  fullName         String
+  email            String
+  phone            String?
+  documentType     DocumentType     @default(DNI)
+  documentId       String
+  birthDate        DateTime
+  photoUrl         String?
+  qrCode           String           @unique
+  status           MembershipStatus @default(PENDING)
+  plan             MembershipPlan   @default(BASIC)
+  consumptionLimit Int              @default(40) // gramos/mes
+  consumedThisMonth Float           @default(0)
+  ageVerified      Boolean          @default(false)
+  signatureUrl     String?
+  joinedAt         DateTime         @default(now())
+  expiresAt        DateTime
+  autoRenew        Boolean          @default(true)
+  walletBalance    Float            @default(0)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  club             Club             @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  accessLogs       AccessLog[]
+  sales            Sale[]
+  reservations     Reservation[]
+  consents         Consent[]
+  documents        Document[]
+
+  @@unique([clubId, documentId])
+  @@index([clubId, status])
+  @@index([clubId, email])
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  memberId  String
+  name      String
+  url       String
+  type      String   // "CONSENT" | "CONTRACT" | "ID"
+  createdAt DateTime @default(now())
+
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+}
+
+// ─── Access control ───────────────────────────────────────────
+
+model AccessLog {
+  id        String       @id @default(cuid())
+  clubId    String
+  memberId  String
+  type      AccessType
+  method    AccessMethod @default(QR)
+  location  String       @default("Entrada principal")
+  timestamp DateTime     @default(now())
+
+  club      Club         @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  member    Member       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([clubId, timestamp])
+  @@index([memberId])
+}
+
+// ─── Inventory ────────────────────────────────────────────────
+
+model Product {
+  id                String          @id @default(cuid())
+  clubId            String
+  name              String
+  sku               String
+  category          ProductCategory @default(FLOR)
+  unit              String          @default("g")
+  stock             Float           @default(0)
+  lowStockThreshold Float           @default(0)
+  pricePerUnit      Float
+  active            Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  club              Club            @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  batches           Batch[]
+  movements         StockMovement[]
+  saleItems         SaleItem[]
+
+  @@unique([clubId, sku])
+  @@index([clubId, category])
+}
+
+model Batch {
+  id        String    @id @default(cuid())
+  productId String
+  code      String
+  quantity  Float
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model StockMovement {
+  id        String            @id @default(cuid())
+  productId String
+  type      StockMovementType
+  quantity  Float
+  note      String?
+  createdAt DateTime          @default(now())
+
+  product   Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+// ─── TPV / Sales ──────────────────────────────────────────────
+
+model Sale {
+  id            String        @id @default(cuid())
+  clubId        String
+  memberId      String?
+  ticket        String
+  total         Float
+  paymentMethod PaymentMethod @default(WALLET)
+  status        SaleStatus    @default(COMPLETED)
+  createdAt     DateTime      @default(now())
+
+  club          Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  member        Member?       @relation(fields: [memberId], references: [id])
+  items         SaleItem[]
+
+  @@unique([clubId, ticket])
+  @@index([clubId, createdAt])
+}
+
+model SaleItem {
+  id        String  @id @default(cuid())
+  saleId    String
+  productId String
+  quantity  Float
+  unitPrice Float
+
+  sale      Sale    @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@index([saleId])
+}
+
+// ─── Reservations ─────────────────────────────────────────────
+
+model Space {
+  id           String        @id @default(cuid())
+  clubId       String
+  name         String
+  capacity     Int           @default(4)
+  active       Boolean       @default(true)
+
+  club         Club          @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+
+  @@index([clubId])
+}
+
+model Reservation {
+  id        String            @id @default(cuid())
+  clubId    String
+  memberId  String
+  spaceId   String
+  startTime DateTime
+  endTime   DateTime
+  guests    Int               @default(1)
+  status    ReservationStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+
+  club      Club              @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  member    Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  space     Space             @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@index([clubId, startTime])
+}
+
+// ─── Communication ────────────────────────────────────────────
+
+model Notification {
+  id        String              @id @default(cuid())
+  clubId    String
+  title     String
+  body      String
+  channels  NotificationChannel[]
+  audience  String              @default("ALL")
+  sentAt    DateTime            @default(now())
+
+  club      Club                @relation(fields: [clubId], references: [id], onDelete: Cascade)
+
+  @@index([clubId, sentAt])
+}
+
+// ─── Legal / Compliance ───────────────────────────────────────
+
+model Consent {
+  id        String   @id @default(cuid())
+  memberId  String
+  type      String   // "GDPR" | "INTERNAL_RULES" | "MARKETING"
+  version   String   @default("1.0")
+  signedAt  DateTime @default(now())
+  ipAddress String?
+
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  clubId    String
+  userId    String?
+  action    String
+  entity    String?
+  entityId  String?
+  metadata  Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  club      Club     @relation(fields: [clubId], references: [id], onDelete: Cascade)
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([clubId, createdAt])
+}
