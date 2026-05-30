@@ -2,7 +2,8 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { defaultCatalog } from "@/lib/catalog";
-import { isCannabisProduct } from "@/lib/product-strain";
+import { isValidClubCategory } from "@/app/(dashboard)/inventario/category-actions";
+import { isCannabisCategory } from "@/lib/product-categories";
 import type { Product } from "@/types";
 
 async function staffClubId() {
@@ -92,21 +93,13 @@ const ALLOWED_ORIGINS = [
   "THAILAND",
   "CANADA",
 ] as const;
-const ALLOWED_CATEGORIES = [
-  "FLOR",
-  "HASH",
-  "EXTRACTO",
-  "COMESTIBLE",
-  "MERCH",
-  "OTRO",
-];
 const ALLOWED_UNITS = ["g", "ud"] as const;
 
 const MAX_PHOTOS = 4;
 const MAX_VIDEO_BYTES = 25 * 1024 * 1024;
 
-function strainFieldsFromInput(input: ProductInput) {
-  if (!isCannabisProduct(input.category as Product["category"])) {
+function strainFieldsFromInput(input: ProductInput, isCannabis: boolean) {
+  if (!isCannabis) {
     return {
       grower: null,
       extractor: null,
@@ -151,7 +144,6 @@ function validateProductInput(input: ProductInput): string | null {
   if (!(input.lowStockThreshold >= 0)) {
     return "El umbral de stock bajo no puede ser negativo.";
   }
-  if (!ALLOWED_CATEGORIES.includes(input.category)) return "Categoría no válida.";
   if (!ALLOWED_UNITS.includes(input.unit)) return "Unidad de venta no válida.";
   if ((input.photos?.length ?? 0) > MAX_PHOTOS) {
     return `Máximo ${MAX_PHOTOS} fotos por producto.`;
@@ -168,7 +160,11 @@ function validateProductInput(input: ProductInput): string | null {
   return null;
 }
 
-function rowFromInput(input: ProductInput, skuFallback: string) {
+function rowFromInput(
+  input: ProductInput,
+  skuFallback: string,
+  isCannabis: boolean,
+) {
   return {
     name: input.name.trim(),
     category: input.category,
@@ -181,7 +177,7 @@ function rowFromInput(input: ProductInput, skuFallback: string) {
     expires_at: input.expiresAt || null,
     photos: input.photos ?? [],
     video_url: input.videoUrl ?? null,
-    ...strainFieldsFromInput(input),
+    ...strainFieldsFromInput(input, isCannabis),
   };
 }
 
@@ -191,8 +187,12 @@ function isMissingOptionalColumnError(message: string) {
   );
 }
 
-function baseRowFromInput(input: ProductInput, skuFallback: string) {
-  const row = rowFromInput(input, skuFallback);
+function baseRowFromInput(
+  input: ProductInput,
+  skuFallback: string,
+  isCannabis: boolean,
+) {
+  const row = rowFromInput(input, skuFallback, isCannabis);
   const {
     photos: _p,
     video_url: _v,
@@ -213,8 +213,9 @@ async function updateProductRow(
   productId: string,
   input: ProductInput,
   sku: string,
+  isCannabis: boolean,
 ) {
-  const fullRow = rowFromInput(input, sku);
+  const fullRow = rowFromInput(input, sku, isCannabis);
   let result = await supabase
     .from("products")
     .update(fullRow)
@@ -229,7 +230,7 @@ async function updateProductRow(
   ) {
     result = await supabase
       .from("products")
-      .update(baseRowFromInput(input, sku))
+      .update(baseRowFromInput(input, sku, isCannabis))
       .eq("club_id", clubId)
       .eq("id", productId)
       .select("id")
@@ -248,6 +249,22 @@ export async function createProductAction(
   const auth = await staffClubId();
   if ("error" in auth) return { error: auth.error };
 
+  const categoryOk = await isValidClubCategory(
+    auth.clubId,
+    auth.supabase,
+    input.category,
+  );
+  if (!categoryOk) return { error: "Categoría no válida." };
+
+  const { data: catRow } = await auth.supabase
+    .from("product_categories")
+    .select("is_cannabis")
+    .eq("club_id", auth.clubId)
+    .eq("id", input.category)
+    .maybeSingle();
+  const isCannabis =
+    catRow?.is_cannabis ?? isCannabisCategory(input.category);
+
   const id = productIdFromName(input.name);
   const sku =
     input.sku?.trim() ||
@@ -262,7 +279,7 @@ export async function createProductAction(
   const { error } = await auth.supabase.from("products").insert({
     id,
     club_id: auth.clubId,
-    ...rowFromInput(input, sku),
+    ...rowFromInput(input, sku, isCannabis),
   });
 
   if (error) {
@@ -270,7 +287,7 @@ export async function createProductAction(
       const retry = await auth.supabase.from("products").insert({
         id,
         club_id: auth.clubId,
-        ...baseRowFromInput(input, sku),
+        ...baseRowFromInput(input, sku, isCannabis),
       });
       if (retry.error) return { error: retry.error.message };
       return { id };
@@ -290,6 +307,22 @@ export async function updateProductAction(
   const auth = await staffClubId();
   if ("error" in auth) return { error: auth.error };
 
+  const categoryOk = await isValidClubCategory(
+    auth.clubId,
+    auth.supabase,
+    input.category,
+  );
+  if (!categoryOk) return { error: "Categoría no válida." };
+
+  const { data: catRow } = await auth.supabase
+    .from("product_categories")
+    .select("is_cannabis")
+    .eq("club_id", auth.clubId)
+    .eq("id", input.category)
+    .maybeSingle();
+  const isCannabis =
+    catRow?.is_cannabis ?? isCannabisCategory(input.category);
+
   const sku =
     input.sku?.trim() ||
     input.name
@@ -306,6 +339,7 @@ export async function updateProductAction(
     productId,
     input,
     sku,
+    isCannabis,
   );
 
   if (error) return { error: error.message };

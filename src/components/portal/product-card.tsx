@@ -2,10 +2,12 @@
 
 import { Minus, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCart } from "@/store/use-cart";
-import { categoryMeta } from "@/lib/product-meta";
+import { getCategoryDisplay } from "@/lib/product-meta";
+import { fetchClubCategories } from "@/lib/data/product-categories";
 import {
   formatThcPercent,
   geneticsLabel,
@@ -16,7 +18,11 @@ import { formatCurrency } from "@/lib/utils";
 import type { Product } from "@/types";
 
 export function ProductCard({ product }: { product: Product }) {
-  const meta = categoryMeta[product.category];
+  const { data: categories = [] } = useQuery({
+    queryKey: ["club-categories"],
+    queryFn: fetchClubCategories,
+  });
+  const meta = getCategoryDisplay(product.category, categories);
   const qty = useCart(
     (s) => s.items.find((i) => i.productId === product.id)?.qty ?? 0,
   );
@@ -24,7 +30,7 @@ export function ProductCard({ product }: { product: Product }) {
   const decrement = useCart((s) => s.decrement);
   const soldOut = product.stock <= 0;
   const hasMedia = Boolean(product.videoUrl || product.photos?.length);
-  const showStrain = isCannabisProduct(product.category);
+  const showStrain = isCannabisProduct(product.category, categories);
   const thc = formatThcPercent(product.thcPercent);
   const genetics = geneticsLabel(product.genetics);
   const origin = originLabel(product.origin);

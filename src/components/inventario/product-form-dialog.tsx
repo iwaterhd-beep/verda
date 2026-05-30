@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Plus, Loader2, Pencil, Trash2, ImagePlus, Video, X } from "lucide-react";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -34,7 +34,8 @@ import {
 } from "@/lib/data/product-media";
 import { ProductStrainFields } from "@/components/inventario/product-strain-fields";
 import { isCannabisProduct } from "@/lib/product-strain";
-import { productCategories, unitMeta, unitOptions } from "@/lib/product-meta";
+import { productCategoriesFromList, unitMeta, unitOptions } from "@/lib/product-meta";
+import { fetchClubCategories } from "@/lib/data/product-categories";
 import type { ProductGenetics, ProductOrigin } from "@/lib/product-strain";
 import type { Product } from "@/types";
 
@@ -81,6 +82,12 @@ export function ProductFormDialog({
   const [videoBlobUrl, setVideoBlobUrl] = React.useState<string | null>(null);
   const videoInputRef = React.useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
+  const { data: categories = [] } = useQuery({
+    queryKey: ["club-categories"],
+    queryFn: fetchClubCategories,
+    enabled: open,
+  });
+  const categoryOptions = productCategoriesFromList(categories);
 
   React.useEffect(() => {
     if (!open) return;
@@ -174,8 +181,8 @@ export function ProductFormDialog({
       grower: String(formData.get("grower") || ""),
       extractor: String(formData.get("extractor") || ""),
       thcPercent,
-      genetics: isCannabisProduct(category) ? genetics || null : null,
-      origin: isCannabisProduct(category) ? origin || null : null,
+      genetics: isCannabisProduct(category, categories) ? genetics || null : null,
+      origin: isCannabisProduct(category, categories) ? origin || null : null,
       description: String(formData.get("description") || ""),
     };
 
@@ -214,6 +221,7 @@ export function ProductFormDialog({
 
       await queryClient.invalidateQueries({ queryKey: ["club-products"] });
       await queryClient.invalidateQueries({ queryKey: ["portal-products"] });
+      await queryClient.invalidateQueries({ queryKey: ["club-categories"] });
       toast.success(mode === "create" ? "Producto creado" : "Producto actualizado", {
         description: trimmedName,
       });
@@ -289,7 +297,7 @@ export function ProductFormDialog({
                   <SelectValue placeholder="Elige categoría" />
                 </SelectTrigger>
                 <SelectContent>
-                  {productCategories.map((c) => (
+                  {categoryOptions.map((c) => (
                     <SelectItem key={c.value} value={c.value}>
                       {c.label}
                     </SelectItem>
@@ -386,7 +394,7 @@ export function ProductFormDialog({
             </div>
           </div>
 
-          {isCannabisProduct(category) && (
+          {isCannabisProduct(category, categories) && (
             <ProductStrainFields
               product={product}
               genetics={genetics}

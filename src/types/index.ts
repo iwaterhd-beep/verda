@@ -49,10 +49,18 @@ export interface AccessLog {
   location: string;
 }
 
+export interface ProductCategory {
+  id: string;
+  label: string;
+  emoji: string;
+  sortOrder: number;
+  isCannabis: boolean;
+}
+
 export interface Product {
   id: string;
   name: string;
-  category: "FLOR" | "HASH" | "EXTRACTO" | "COMESTIBLE" | "MERCH" | "OTRO";
+  category: string;
   sku: string;
   stock: number;
   unit: "g" | "ud";
@@ -120,7 +128,7 @@ export interface MemberApplication {
 export interface CartItem {
   productId: string;
   name: string;
-  category: Product["category"];
+  category: string;
   unit: Product["unit"];
   pricePerUnit: number;
   qty: number;

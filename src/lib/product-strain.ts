@@ -1,4 +1,5 @@
-import type { Product } from "@/types";
+import { isCannabisCategory } from "@/lib/product-categories";
+import type { ProductCategory } from "@/types";
 
 export type ProductGenetics = "INDICA" | "SATIVA" | "HYBRID";
 export type ProductOrigin =
@@ -36,8 +37,11 @@ const originLabels: Record<ProductOrigin, string> = {
   CANADA: "Canadá",
 };
 
-export function isCannabisProduct(category: Product["category"]) {
-  return category === "FLOR" || category === "HASH" || category === "EXTRACTO";
+export function isCannabisProduct(
+  category: string,
+  categories?: ProductCategory[],
+) {
+  return isCannabisCategory(category, categories);
 }
 
 export function geneticsLabel(value?: ProductGenetics | null) {

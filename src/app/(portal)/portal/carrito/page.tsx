@@ -23,7 +23,8 @@ import { useCart } from "@/store/use-cart";
 import { currentMember } from "@/lib/current-member";
 import { fetchMyMember } from "@/lib/data/members";
 import { placeOrderAction } from "@/app/(portal)/portal/actions";
-import { categoryMeta } from "@/lib/product-meta";
+import { getCategoryDisplay } from "@/lib/product-meta";
+import { fetchClubCategories } from "@/lib/data/product-categories";
 import { formatCurrency, cn } from "@/lib/utils";
 import type { Order } from "@/types";
 
@@ -48,6 +49,11 @@ export default function CartPage() {
   const orderTotal = total();
   const insufficientWallet =
     method === "WALLET" && orderTotal > m.walletBalance;
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ["club-categories"],
+    queryFn: fetchClubCategories,
+  });
 
   async function confirm() {
     if (overLimit) {
@@ -110,7 +116,7 @@ export default function CartPage() {
 
       <div className="space-y-2">
         {items.map((i) => {
-          const meta = categoryMeta[i.category];
+          const meta = getCategoryDisplay(i.category, categories);
           return (
             <Card key={i.productId}>
               <CardContent className="flex items-center gap-3 p-3">

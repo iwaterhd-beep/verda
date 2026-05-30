@@ -7,23 +7,26 @@ import { Input } from "@/components/ui/input";
 import { ProductCard } from "@/components/portal/product-card";
 import { CartBar } from "@/components/portal/cart-bar";
 import { fetchClubProducts } from "@/lib/data/products";
-import { categoryMeta, categoryOrder } from "@/lib/product-meta";
+import { fetchClubCategories } from "@/lib/data/product-categories";
+import { getCategoryDisplay } from "@/lib/product-meta";
 import { cn } from "@/lib/utils";
-import type { Product } from "@/types";
 
 export default function MenuPage() {
   const [query, setQuery] = React.useState("");
-  const [category, setCategory] = React.useState<Product["category"] | "ALL">(
-    "ALL",
-  );
+  const [category, setCategory] = React.useState<string>("ALL");
 
   const { data: products = [], isLoading, error } = useQuery({
     queryKey: ["portal-products"],
     queryFn: fetchClubProducts,
   });
 
-  const availableCategories = categoryOrder.filter((c) =>
-    products.some((p) => p.category === c),
+  const { data: categories = [] } = useQuery({
+    queryKey: ["club-categories"],
+    queryFn: fetchClubCategories,
+  });
+
+  const availableCategories = categories.filter((c) =>
+    products.some((p) => p.category === c.id),
   );
 
   const filtered = products.filter((p) => {
@@ -50,15 +53,18 @@ export default function MenuPage() {
         <Chip active={category === "ALL"} onClick={() => setCategory("ALL")}>
           Todo
         </Chip>
-        {availableCategories.map((c) => (
-          <Chip
-            key={c}
-            active={category === c}
-            onClick={() => setCategory(c)}
-          >
-            {categoryMeta[c].emoji} {categoryMeta[c].label}
-          </Chip>
-        ))}
+        {availableCategories.map((c) => {
+          const display = getCategoryDisplay(c.id, categories);
+          return (
+            <Chip
+              key={c.id}
+              active={category === c.id}
+              onClick={() => setCategory(c.id)}
+            >
+              {display.emoji} {display.label}
+            </Chip>
+          );
+        })}
       </div>
 
       {isLoading ? (

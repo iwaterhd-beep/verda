@@ -1,37 +1,45 @@
-import type { Product } from "@/types";
+import type { ProductCategory } from "@/types";
+import {
+  DEFAULT_PRODUCT_CATEGORIES,
+  getCategoryDisplay,
+} from "@/lib/product-categories";
 
-export const categoryMeta: Record<
-  Product["category"],
+/** @deprecated Usa getCategoryDisplay con categorías del club. */
+export const categoryMeta = Object.fromEntries(
+  DEFAULT_PRODUCT_CATEGORIES.map((c) => {
+    const display = getCategoryDisplay(c.id);
+    return [
+      c.id,
+      {
+        label: display.label,
+        formLabel: display.formLabel,
+        emoji: display.emoji,
+        gradient: display.gradient,
+      },
+    ];
+  }),
+) as Record<
+  string,
   { label: string; formLabel: string; emoji: string; gradient: string }
-> = {
-  FLOR: { label: "Flores", formLabel: "Flor", emoji: "🌿", gradient: "from-emerald-500/25 to-green-700/10" },
-  HASH: { label: "Hash", formLabel: "Hash", emoji: "🧱", gradient: "from-stone-500/25 to-amber-900/10" },
-  EXTRACTO: { label: "Extractos", formLabel: "Extracto", emoji: "🍯", gradient: "from-amber-500/25 to-orange-700/10" },
-  COMESTIBLE: { label: "Comestibles", formLabel: "Comestible", emoji: "🍬", gradient: "from-pink-500/25 to-rose-700/10" },
-  MERCH: { label: "Merch", formLabel: "Merch", emoji: "👕", gradient: "from-sky-500/25 to-blue-700/10" },
-  OTRO: { label: "Otros", formLabel: "Otro", emoji: "✨", gradient: "from-violet-500/25 to-purple-700/10" },
-};
+>;
 
-export const categoryOrder: Product["category"][] = [
-  "FLOR",
-  "HASH",
-  "EXTRACTO",
-  "COMESTIBLE",
-  "MERCH",
-  "OTRO",
-];
+/** @deprecated Usa categorías del club ordenadas por sortOrder. */
+export const categoryOrder = DEFAULT_PRODUCT_CATEGORIES.map((c) => c.id);
 
-export const productCategories = categoryOrder.map((value) => ({
-  value,
-  label: categoryMeta[value].formLabel,
-}));
-
-export function categoryLabel(category: Product["category"]) {
-  return categoryMeta[category]?.label ?? category;
+export function productCategoriesFromList(categories: ProductCategory[]) {
+  return [...categories]
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label))
+    .map((c) => ({ value: c.id, label: c.label }));
 }
 
+export {
+  DEFAULT_PRODUCT_CATEGORIES,
+  getCategoryDisplay,
+  isCannabisCategory,
+} from "@/lib/product-categories";
+
 export const unitOptions: {
-  value: Product["unit"];
+  value: "g" | "ud";
   label: string;
   priceLabel: string;
   stockLabel: string;
@@ -53,6 +61,6 @@ export const unitOptions: {
   },
 ];
 
-export function unitMeta(unit: Product["unit"]) {
+export function unitMeta(unit: "g" | "ud") {
   return unitOptions.find((o) => o.value === unit) ?? unitOptions[0];
 }

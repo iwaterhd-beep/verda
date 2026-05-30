@@ -17,12 +17,14 @@ import {
 } from "@/components/ui/table";
 import { fetchClubProducts } from "@/lib/data/products";
 import { CreateProductDialog } from "@/components/inventario/create-product-dialog";
+import { ManageCategoriesDialog } from "@/components/inventario/manage-categories-dialog";
 import {
   EditProductDialog,
 } from "@/components/inventario/product-form-dialog";
 import { DeleteProductDialog } from "@/components/inventario/delete-product-dialog";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { categoryMeta } from "@/lib/product-meta";
+import { getCategoryDisplay } from "@/lib/product-meta";
+import { fetchClubCategories } from "@/lib/data/product-categories";
 import type { Product } from "@/types";
 
 export function InventarioClient() {
@@ -42,6 +44,11 @@ export function InventarioClient() {
     return () => window.removeEventListener("focus", onFocus);
   }, [queryClient]);
 
+  const { data: categories = [] } = useQuery({
+    queryKey: ["club-categories"],
+    queryFn: fetchClubCategories,
+  });
+
   const lowStock = products.filter((p) => p.stock < p.lowStockThreshold);
 
   return (
@@ -50,6 +57,7 @@ export function InventarioClient() {
         title="Inventario"
         description="Stock real del club. Se actualiza al marcar pedidos como listos."
       >
+        <ManageCategoriesDialog />
         <CreateProductDialog />
       </PageHeader>
 
@@ -170,7 +178,7 @@ export function InventarioClient() {
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
-                            {categoryMeta[p.category]?.formLabel ?? p.category}
+                            {getCategoryDisplay(p.category, categories).formLabel}
                           </Badge>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
