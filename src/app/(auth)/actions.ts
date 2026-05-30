@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getAppBaseUrl } from "@/lib/app-url";
 
 export interface AuthState {
   error?: string;
@@ -86,12 +87,13 @@ export async function signUp(
   }
 
   const supabase = await createClient();
+  const appUrl = await getAppBaseUrl();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: { name, club, role: "CLUB_ADMIN" },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+      emailRedirectTo: `${appUrl}/dashboard`,
     },
   });
 
