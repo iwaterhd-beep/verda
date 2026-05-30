@@ -62,6 +62,8 @@ export function ProductFormDialog({
   const setOpen = onOpenChange ?? setInternalOpen;
 
   const [loading, setLoading] = React.useState(false);
+  const [name, setName] = React.useState(product?.name ?? "");
+  const nameRef = React.useRef<HTMLInputElement>(null);
   const [category, setCategory] = React.useState<Product["category"]>(
     product?.category ?? "FLOR",
   );
@@ -77,6 +79,7 @@ export function ProductFormDialog({
 
   React.useEffect(() => {
     if (!open) return;
+    setName(product?.name ?? "");
     setCategory(product?.category ?? "FLOR");
     setUnit(product?.unit ?? "g");
     setPhotos(product?.photos ?? []);
@@ -108,23 +111,43 @@ export function ProductFormDialog({
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    const name = String(form.get("name") || "").trim();
-    if (!name) {
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const trimmedName = name.trim() || String(formData.get("name") || "").trim();
+    if (!trimmedName) {
       toast.error("El nombre es obligatorio");
+      nameRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      nameRef.current?.focus();
+      return;
+    }
+
+    const stock = Number(formData.get("stock"));
+    const pricePerUnit = Number(formData.get("pricePerUnit"));
+    const lowStockThreshold = Number(formData.get("lowStockThreshold"));
+
+    if (!Number.isFinite(stock) || stock < 0) {
+      toast.error("Indica un stock válido");
+      return;
+    }
+    if (!Number.isFinite(pricePerUnit) || pricePerUnit < 0) {
+      toast.error("Indica un precio válido");
+      return;
+    }
+    if (!Number.isFinite(lowStockThreshold) || lowStockThreshold < 0) {
+      toast.error("Indica un umbral de stock bajo válido");
       return;
     }
 
     const payload = {
-      name,
+      name: trimmedName,
       category,
-      sku: String(form.get("sku") || ""),
-      stock: Number(form.get("stock") || 0),
+      sku: String(formData.get("sku") || ""),
+      stock,
       unit,
-      lowStockThreshold: Number(form.get("lowStockThreshold") || 10),
-      pricePerUnit: Number(form.get("pricePerUnit") || 0),
-      batch: String(form.get("batch") || ""),
-      expiresAt: String(form.get("expiresAt") || "") || null,
+      lowStockThreshold,
+      pricePerUnit,
+      batch: String(formData.get("batch") || ""),
+      expiresAt: String(formData.get("expiresAt") || "") || null,
       photos,
       videoUrl,
     };
@@ -146,6 +169,9 @@ export function ProductFormDialog({
           toast.error("No se pudo guardar", { description: res.error });
           return;
         }
+      } else {
+        toast.error("No se pudo guardar", { description: "Producto no encontrado." });
+        return;
       }
 
       if (videoFile && productId) {
@@ -164,9 +190,13 @@ export function ProductFormDialog({
       await queryClient.invalidateQueries({ queryKey: ["club-products"] });
       await queryClient.invalidateQueries({ queryKey: ["portal-products"] });
       toast.success(mode === "create" ? "Producto creado" : "Producto actualizado", {
-        description: name,
+        description: trimmedName,
       });
       setOpen(false);
+    } catch (err) {
+      toast.error("Error al guardar", {
+        description: err instanceof Error ? err.message : "Inténtalo de nuevo.",
+      });
     } finally {
       setLoading(false);
     }
@@ -210,15 +240,16 @@ export function ProductFormDialog({
               : "Modifica datos, fotos o vídeo del producto."}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
           <div className="grid gap-2">
             <Label htmlFor="name">Nombre</Label>
             <Input
+              ref={nameRef}
               id="name"
               name="name"
               placeholder="Ej. OG Kush"
-              defaultValue={product?.name}
-              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
             />
           </div>
 
@@ -268,7 +299,6 @@ export function ProductFormDialog({
                 min={0}
                 step="0.01"
                 defaultValue={product?.stock ?? 0}
-                required
               />
             </div>
             <div className="grid gap-2">
@@ -280,7 +310,6 @@ export function ProductFormDialog({
                 min={0}
                 step="0.01"
                 defaultValue={product?.pricePerUnit ?? 0}
-                required
               />
             </div>
           </div>
@@ -295,7 +324,6 @@ export function ProductFormDialog({
                 min={0}
                 step="0.01"
                 defaultValue={product?.lowStockThreshold ?? 10}
-                required
               />
             </div>
             <div className="grid gap-2">

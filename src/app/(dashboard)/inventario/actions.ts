@@ -122,6 +122,43 @@ function rowFromInput(input: ProductInput, skuFallback: string) {
   };
 }
 
+function isMissingMediaColumnError(message: string) {
+  return /photos|video_url/i.test(message);
+}
+
+async function updateProductRow(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  clubId: string,
+  productId: string,
+  input: ProductInput,
+  sku: string,
+) {
+  const fullRow = rowFromInput(input, sku);
+  let result = await supabase
+    .from("products")
+    .update(fullRow)
+    .eq("club_id", clubId)
+    .eq("id", productId)
+    .select("id")
+    .maybeSingle();
+
+  if (
+    result.error &&
+    isMissingMediaColumnError(result.error.message)
+  ) {
+    const { photos: _p, video_url: _v, ...baseRow } = fullRow;
+    result = await supabase
+      .from("products")
+      .update(baseRow)
+      .eq("club_id", clubId)
+      .eq("id", productId)
+      .select("id")
+      .maybeSingle();
+  }
+
+  return result;
+}
+
 export async function createProductAction(
   input: ProductInput,
 ): Promise<ProductActionResult> {
@@ -148,7 +185,19 @@ export async function createProductAction(
     ...rowFromInput(input, sku),
   });
 
-  if (error) return { error: error.message };
+  if (error) {
+    if (isMissingMediaColumnError(error.message)) {
+      const { photos: _p, video_url: _v, ...baseRow } = rowFromInput(input, sku);
+      const retry = await auth.supabase.from("products").insert({
+        id,
+        club_id: auth.clubId,
+        ...baseRow,
+      });
+      if (retry.error) return { error: retry.error.message };
+      return { id };
+    }
+    return { error: error.message };
+  }
   return { id };
 }
 
@@ -172,13 +221,16 @@ export async function updateProductAction(
       .slice(0, 6) ||
     "SKU";
 
-  const { error } = await auth.supabase
-    .from("products")
-    .update(rowFromInput(input, sku))
-    .eq("club_id", auth.clubId)
-    .eq("id", productId);
+  const { data, error } = await updateProductRow(
+    auth.supabase,
+    auth.clubId,
+    productId,
+    input,
+    sku,
+  );
 
   if (error) return { error: error.message };
+  if (!data) return { error: "No se encontró el producto." };
   return { id: productId };
 }
 
@@ -230,24 +282,30 @@ export async function uploadProductVideoAction(
   if ("error" in auth) return { error: auth.error };
 
   const file = formData.get("video");
-  if (!(file instanceof File) || file.size === 0) {
+  if (
+    !file ||
+    typeof file === "string" ||
+    !("size" in file) ||
+    file.size === 0
+  ) {
     return { error: "Selecciona un vídeo." };
   }
-  if (!file.type.startsWith("video/")) {
+  const videoFile = file as File;
+  if (!videoFile.type.startsWith("video/")) {
     return { error: "El archivo debe ser un vídeo." };
   }
-  if (file.size > MAX_VIDEO_BYTES) {
+  if (videoFile.size > MAX_VIDEO_BYTES) {
     return { error: "El vídeo no puede superar 25 MB." };
   }
 
-  const ext = file.name.split(".").pop()?.toLowerCase() || "mp4";
+  const ext = videoFile.name.split(".").pop()?.toLowerCase() || "mp4";
   const path = `${auth.clubId}/${productId}/video.${ext}`;
   const admin = createAdminClient();
-  const buffer = Buffer.from(await file.arrayBuffer());
+  const buffer = Buffer.from(await videoFile.arrayBuffer());
 
   const { error: uploadError } = await admin.storage
     .from("product-media")
-    .upload(path, buffer, { contentType: file.type, upsert: true });
+    .upload(path, buffer, { contentType: videoFile.type, upsert: true });
 
   if (uploadError) return { error: uploadError.message };
 
