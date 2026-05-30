@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import {
   MAX_PRODUCT_VIDEOS,
   MAX_VIDEO_BYTES,
+  maxVideoSizeLabel,
 } from "@/lib/product-media-limits";
 import { storagePathFromPublicUrl } from "@/lib/product-media-storage";
 import type { Product } from "@/types";
@@ -54,7 +55,7 @@ export async function uploadProductVideoClient(
     return { error: "El archivo debe ser un vídeo." };
   }
   if (file.size > MAX_VIDEO_BYTES) {
-    return { error: "El vídeo no puede superar 25 MB." };
+    return { error: `El vídeo no puede superar ${maxVideoSizeLabel()}.` };
   }
 
   const auth = await staffClubId();

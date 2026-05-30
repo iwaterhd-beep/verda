@@ -9,6 +9,7 @@ import {
   MAX_PRODUCT_PHOTOS,
   MAX_PRODUCT_VIDEOS,
   MAX_VIDEO_BYTES,
+  maxVideoSizeLabel,
 } from "@/lib/product-media-limits";
 import type { Product } from "@/types";
 
@@ -417,7 +418,7 @@ export async function uploadProductVideoAction(
     return { error: "El archivo debe ser un vídeo." };
   }
   if (videoFile.size > MAX_VIDEO_BYTES) {
-    return { error: "El vídeo no puede superar 25 MB." };
+    return { error: `El vídeo no puede superar ${maxVideoSizeLabel()}.` };
   }
 
   const ext = videoFile.name.split(".").pop()?.toLowerCase() || "mp4";

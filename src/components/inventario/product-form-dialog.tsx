@@ -37,6 +37,7 @@ import {
 import {
   MAX_PRODUCT_PHOTOS,
   MAX_PRODUCT_VIDEOS,
+  maxVideoSizeLabel,
 } from "@/lib/product-media-limits";
 import { ProductStrainFields } from "@/components/inventario/product-strain-fields";
 import { isCannabisProduct } from "@/lib/product-strain";
@@ -536,7 +537,7 @@ export function ProductFormDialog({
               </Button>
             )}
             <p className="text-xs text-muted-foreground">
-              Máximo 25 MB por vídeo · MP4, WebM… Se reproducen en bucle en el menú.
+              Máximo {maxVideoSizeLabel()} por vídeo · MP4, WebM… Se reproducen en bucle en el menú.
             </p>
           </div>
 
