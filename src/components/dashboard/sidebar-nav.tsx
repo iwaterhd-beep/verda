@@ -10,22 +10,64 @@ import { createClient } from "@/lib/supabase/client";
 
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const [pendingCount, setPendingCount] = React.useState(0);
-  const [orderCount, setOrderCount] = React.useState(0);
+  const [activeMembers, setActiveMembers] = React.useState(0);
+  const [pendingApps, setPendingApps] = React.useState(0);
+  const [lowStockCount, setLowStockCount] = React.useState(0);
+  const [preparingOrders, setPreparingOrders] = React.useState(0);
 
   React.useEffect(() => {
-    const supabase = createClient();
-    supabase
-      .from("member_applications")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "PENDING")
-      .then(({ count }) => setPendingCount(count ?? 0));
-    supabase
-      .from("orders")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "PREPARING")
-      .then(({ count }) => setOrderCount(count ?? 0));
+    async function loadCounts() {
+      const supabase = createClient();
+
+      const [membersRes, appsRes, productsRes, ordersRes] = await Promise.all([
+        supabase
+          .from("members")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "ACTIVE"),
+        supabase
+          .from("member_applications")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "PENDING"),
+        supabase.from("products").select("stock, low_stock_threshold"),
+        supabase
+          .from("orders")
+          .select("id", { count: "exact", head: true })
+          .eq("status", "PREPARING"),
+      ]);
+
+      setActiveMembers(membersRes.count ?? 0);
+      setPendingApps(appsRes.count ?? 0);
+      setPreparingOrders(ordersRes.count ?? 0);
+
+      const low = (productsRes.data ?? []).filter(
+        (p) => Number(p.stock) < Number(p.low_stock_threshold),
+      ).length;
+      setLowStockCount(low);
+    }
+
+    void loadCounts();
   }, [pathname]);
+
+  function badgeFor(href: string): { text?: string; variant: "default" | "secondary" | "success" | "warning" } {
+    switch (href) {
+      case "/socios":
+        return { text: String(activeMembers), variant: "secondary" };
+      case "/solicitudes":
+        return pendingApps > 0
+          ? { text: String(pendingApps), variant: "success" }
+          : { variant: "secondary" };
+      case "/inventario":
+        return lowStockCount > 0
+          ? { text: String(lowStockCount), variant: "warning" }
+          : { variant: "secondary" };
+      case "/pedidos":
+        return preparingOrders > 0
+          ? { text: String(preparingOrders), variant: "success" }
+          : { variant: "secondary" };
+      default:
+        return { variant: "secondary" };
+    }
+  }
 
   return (
     <nav className="flex flex-1 flex-col gap-6 px-3 py-4">
@@ -37,16 +79,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           {section.items.map((item) => {
             const active =
               pathname === item.href || pathname.startsWith(item.href + "/");
-            const badge =
-              item.href === "/solicitudes"
-                ? pendingCount > 0
-                  ? String(pendingCount)
-                  : undefined
-                : item.href === "/pedidos"
-                  ? orderCount > 0
-                    ? String(orderCount)
-                    : undefined
-                  : item.badge;
+            const { text: badge, variant: badgeVariant } = badgeFor(item.href);
             return (
               <Link
                 key={item.href}
@@ -74,11 +107,9 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                 {badge && (
                   <Badge
                     variant={
-                      item.href === "/solicitudes" || item.href === "/pedidos"
-                        ? "success"
-                        : active
-                          ? "default"
-                          : "secondary"
+                      badgeVariant === "secondary" && active
+                        ? "default"
+                        : badgeVariant
                     }
                     className="h-5 px-1.5 text-[0.65rem]"
                   >

@@ -30,7 +30,7 @@ export const navSections: NavSection[] = [
     label: "General",
     items: [
       { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-      { title: "Socios", href: "/socios", icon: Users, badge: "128" },
+      { title: "Socios", href: "/socios", icon: Users },
       { title: "Solicitudes", href: "/solicitudes", icon: UserPlus },
       { title: "Control de acceso", href: "/acceso", icon: ScanLine },
     ],
@@ -38,7 +38,7 @@ export const navSections: NavSection[] = [
   {
     label: "Operaciones",
     items: [
-      { title: "Inventario", href: "/inventario", icon: Boxes, badge: "2" },
+      { title: "Inventario", href: "/inventario", icon: Boxes },
       { title: "Pedidos", href: "/pedidos", icon: ClipboardList },
       { title: "TPV", href: "/tpv", icon: ShoppingCart },
       { title: "Reservas", href: "/reservas", icon: CalendarDays },
