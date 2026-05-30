@@ -1,7 +1,7 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { generateTempPassword } from "@/lib/auth/temp-password";
 
 export interface ApproveResult {
   error?: string;
@@ -9,10 +9,6 @@ export interface ApproveResult {
   password?: string;
 }
 
-function tempPassword() {
-  // 9 caracteres legibles + dígitos para cumplir requisitos.
-  return randomBytes(6).toString("base64url").slice(0, 9) + "7a";
-}
 
 export async function approveApplicationAction(
   appId: string,
@@ -48,7 +44,7 @@ export async function approveApplicationAction(
   }
 
   const admin = createAdminClient();
-  const password = tempPassword();
+  const password = generateTempPassword();
 
   const { data: created, error: createErr } = await admin.auth.admin.createUser({
     email: app.email,

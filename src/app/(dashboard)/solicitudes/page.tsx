@@ -30,14 +30,10 @@ import {
 } from "@/components/ui/dialog";
 import { fetchApplications, rejectApplication } from "@/lib/data/applications";
 import { approveApplicationAction } from "./actions";
+import { MemberCredentialsDialog } from "@/components/members/member-credentials-dialog";
+import type { MemberCredentials } from "@/components/members/member-credentials-dialog";
 import { avatarUrl, formatDate } from "@/lib/utils";
 import type { MemberApplication } from "@/types";
-
-interface Credentials {
-  name: string;
-  email: string;
-  password: string;
-}
 
 function ageFrom(dateStr: string) {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / (365.25 * 864e5));
@@ -52,7 +48,7 @@ export default function SolicitudesPage() {
   const [viewing, setViewing] = React.useState<MemberApplication | null>(null);
   const [rejecting, setRejecting] = React.useState<MemberApplication | null>(null);
   const [reason, setReason] = React.useState("");
-  const [credentials, setCredentials] = React.useState<Credentials | null>(null);
+  const [credentials, setCredentials] = React.useState<MemberCredentials | null>(null);
 
   const reload = React.useCallback(() => {
     setLoading(true);
@@ -248,45 +244,11 @@ export default function SolicitudesPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={!!credentials}
+      <MemberCredentialsDialog
+        credentials={credentials}
+        open={Boolean(credentials)}
         onOpenChange={(o) => !o && setCredentials(null)}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Socio dado de alta</DialogTitle>
-            <DialogDescription>
-              Comparte estas credenciales con {credentials?.name}. Podrá entrar
-              en el portal de socios y cambiar su contraseña.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-2 rounded-xl border border-border bg-secondary/40 p-4 text-sm">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-muted-foreground">Email</span>
-              <span className="font-mono">{credentials?.email}</span>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-muted-foreground">Contraseña</span>
-              <span className="font-mono">{credentials?.password}</span>
-            </div>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button
-              variant="outline"
-              onClick={() =>
-                navigator.clipboard
-                  .writeText(
-                    `Acceso al portal de socios\nEmail: ${credentials?.email}\nContraseña: ${credentials?.password}\n${window.location.origin}/login`,
-                  )
-                  .then(() => toast.success("Credenciales copiadas"))
-              }
-            >
-              Copiar
-            </Button>
-            <Button onClick={() => setCredentials(null)}>Hecho</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      />
     </div>
   );
 }
