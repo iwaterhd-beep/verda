@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Package, AlertTriangle, Loader2 } from "lucide-react";
+import { Package, AlertTriangle, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { fetchClubProducts } from "@/lib/data/products";
 import { ensureClubCatalogAction } from "@/app/(dashboard)/inventario/actions";
+import { CreateProductDialog } from "@/components/inventario/create-product-dialog";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
 const categoryLabels: Record<string, string> = {
@@ -57,9 +58,7 @@ export function InventarioClient() {
         title="Inventario"
         description="Stock real del club. Se actualiza al marcar pedidos como listos."
       >
-        <Button size="sm">
-          <Plus className="h-4 w-4" /> Nuevo producto
-        </Button>
+        <CreateProductDialog />
       </PageHeader>
 
       {isLoading ? (
