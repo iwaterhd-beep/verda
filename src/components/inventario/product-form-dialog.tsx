@@ -272,7 +272,7 @@ export function ProductFormDialog({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="pricePerUnit">Precio / unidad (€)</Label>
+              <Label htmlFor="pricePerUnit">Precio / unidad (Crd)</Label>
               <Input
                 id="pricePerUnit"
                 name="pricePerUnit"

@@ -36,7 +36,7 @@ const modules = [
 const plans = [
   {
     name: "Starter",
-    price: "0 €",
+    price: "0 Crd",
     period: "/mes",
     desc: "Para clubes que empiezan.",
     features: ["Hasta 50 socios", "Control de acceso QR", "TPV básico", "1 club"],
@@ -45,7 +45,7 @@ const plans = [
   },
   {
     name: "Pro",
-    price: "79 €",
+    price: "79 Crd",
     period: "/mes",
     desc: "El favorito de los clubes en crecimiento.",
     features: ["Socios ilimitados", "Inventario + lotes", "Reservas y comunicación", "Analytics avanzado", "Automatizaciones"],
@@ -123,9 +123,9 @@ export default function LandingPage() {
             <div className="grid grid-cols-4 gap-3 p-5 sm:grid-cols-4">
               {[
                 { k: "Socios activos", v: "128", d: "+12%" },
-                { k: "Ingresos", v: "31.200 €", d: "+8%" },
+                { k: "Ingresos", v: "31.200 Crd", d: "+8%" },
                 { k: "Visitas hoy", v: "47", d: "58%" },
-                { k: "Ticket medio", v: "27,40 €", d: "+6%" },
+                { k: "Ticket medio", v: "27,40 Crd", d: "+6%" },
               ].map((s) => (
                 <div key={s.k} className="rounded-xl border border-white/10 bg-background/40 p-3 text-left">
                   <p className="text-[0.7rem] text-muted-foreground">{s.k}</p>

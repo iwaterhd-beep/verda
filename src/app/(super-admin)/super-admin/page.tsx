@@ -7,7 +7,7 @@ import {
   Building2,
   Users,
   ClipboardList,
-  Euro,
+  Coins,
   UserPlus,
   Loader2,
   ArrowRight,
@@ -103,7 +103,7 @@ export default function SuperAdminDashboardPage() {
           <StatCard
             title="Ingresos del mes"
             value={formatCurrency(stats.revenueThisMonth)}
-            icon={Euro}
+            icon={Coins}
           />
           <StatCard
             title="Solicitudes pendientes"

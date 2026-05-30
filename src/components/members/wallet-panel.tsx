@@ -223,7 +223,7 @@ export function WalletPanel({ memberId }: { memberId: string }) {
           </DialogHeader>
           <div className="grid gap-2">
             <Label htmlFor="amount">
-              {mode === "ADJUST" ? "Nuevo saldo (€)" : "Importe (€)"}
+              {mode === "ADJUST" ? "Nuevo saldo (Crd)" : "Importe (Crd)"}
             </Label>
             <Input
               id="amount"
@@ -243,7 +243,7 @@ export function WalletPanel({ memberId }: { memberId: string }) {
                     size="sm"
                     onClick={() => setValue(String(q))}
                   >
-                    +{q}€
+                    +{q} Crd
                   </Button>
                 ))}
               </div>

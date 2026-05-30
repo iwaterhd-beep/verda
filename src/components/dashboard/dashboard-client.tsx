@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   Users,
-  Euro,
+  Coins,
   ScanLine,
   TrendingUp,
   Download,
@@ -87,7 +87,7 @@ export function DashboardClient() {
           value={formatCurrency(stats.monthRevenue)}
           delta={stats.monthRevenueDelta}
           hint="vs. mes anterior"
-          icon={Euro}
+          icon={Coins}
         />
         <KpiCard
           title="Pedidos hoy"

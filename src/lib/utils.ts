@@ -5,20 +5,25 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(value: number, currency = "EUR") {
-  return new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency,
+export function formatCurrency(value: number) {
+  const formatted = new Intl.NumberFormat("es-ES", {
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
+  return `${formatted} Crd`;
 }
 
 export function formatNumber(value: number) {
   return new Intl.NumberFormat("es-ES").format(value);
 }
 
-export function formatDate(date: Date | string, withTime = false) {
+export function formatDate(
+  date: Date | string | null | undefined,
+  withTime = false,
+) {
+  if (date == null || date === "") return "—";
   const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "—";
   return new Intl.DateTimeFormat("es-ES", {
     day: "2-digit",
     month: "short",
@@ -43,8 +48,10 @@ export function avatarUrl(seed: string) {
   )}&radius=20`;
 }
 
-export function relativeTime(date: Date | string) {
+export function relativeTime(date: Date | string | null | undefined) {
+  if (date == null || date === "") return "—";
   const d = typeof date === "string" ? new Date(date) : date;
+  if (Number.isNaN(d.getTime())) return "—";
   const diff = (Date.now() - d.getTime()) / 1000;
   const rtf = new Intl.RelativeTimeFormat("es-ES", { numeric: "auto" });
   if (diff < 60) return rtf.format(-Math.round(diff), "second");
