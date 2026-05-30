@@ -1,5 +1,9 @@
+"use client";
+
+import * as React from "react";
 import Link from "next/link";
-import { Shield, KeyRound } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Shield, KeyRound, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/dashboard/page-header";
 import {
   Card,
@@ -12,8 +16,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { checkSuperAdminExistsAction } from "@/app/(super-admin)/super-admin/actions";
 
-export default async function SuperAdminSettingsPage() {
-  const hasSuperAdmin = await checkSuperAdminExistsAction();
+export default function SuperAdminSettingsPage() {
+  const { data: hasSuperAdmin, isLoading } = useQuery({
+    queryKey: ["super-admin-exists"],
+    queryFn: checkSuperAdminExistsAction,
+  });
 
   return (
     <div className="mx-auto max-w-[700px]">
@@ -33,38 +40,50 @@ export default async function SuperAdminSettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between rounded-xl border border-border/60 p-4">
-            <div>
-              <p className="text-sm font-medium">Estado</p>
-              <p className="text-xs text-muted-foreground">
-                {hasSuperAdmin
-                  ? "Super admin configurado"
-                  : "Pendiente de bootstrap inicial"}
-              </p>
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-            <Badge variant={hasSuperAdmin ? "success" : "warning"}>
-              {hasSuperAdmin ? "Activo" : "Setup"}
-            </Badge>
-          </div>
+          ) : (
+            <>
+              <div className="flex items-center justify-between rounded-xl border border-border/60 p-4">
+                <div>
+                  <p className="text-sm font-medium">Estado</p>
+                  <p className="text-xs text-muted-foreground">
+                    {hasSuperAdmin
+                      ? "Super admin configurado"
+                      : "Pendiente de bootstrap inicial"}
+                  </p>
+                </div>
+                <Badge variant={hasSuperAdmin ? "success" : "warning"}>
+                  {hasSuperAdmin ? "Activo" : "Setup"}
+                </Badge>
+              </div>
 
-          {!hasSuperAdmin && (
-            <Button asChild>
-              <Link href="/super-admin/setup">
-                <KeyRound className="h-4 w-4" /> Configurar super admin
-              </Link>
-            </Button>
+              {!hasSuperAdmin && (
+                <Button asChild>
+                  <Link href="/super-admin/setup">
+                    <KeyRound className="h-4 w-4" /> Configurar super admin
+                  </Link>
+                </Button>
+              )}
+            </>
           )}
 
-          <div className="rounded-xl bg-secondary/40 p-4 text-xs text-muted-foreground space-y-2">
-            <p className="font-medium text-foreground">Promover cuenta existente (SQL)</p>
+          <div className="space-y-2 rounded-xl bg-secondary/40 p-4 text-xs text-muted-foreground">
+            <p className="font-medium text-foreground">
+              Promover cuenta existente (SQL)
+            </p>
             <pre className="overflow-x-auto rounded-lg bg-background p-3 font-mono text-[0.7rem]">
-{`update public.profiles
+              {`update public.profiles
 set role = 'SUPER_ADMIN', club_id = null
 where email = 'tu@email.com';`}
             </pre>
             <p>
               Ejecuta también{" "}
-              <code className="rounded bg-background px-1">supabase/super-admin.sql</code>{" "}
+              <code className="rounded bg-background px-1">
+                supabase/super-admin.sql
+              </code>{" "}
               si tu base de datos ya existía antes de esta actualización.
             </p>
           </div>

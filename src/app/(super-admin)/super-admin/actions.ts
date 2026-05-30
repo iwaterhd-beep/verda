@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { requireSuperAdmin } from "@/lib/auth/require-super-admin";
-import { createAdminClient } from "@/lib/supabase/server";
+import { createAdminClient, isSupabaseAdminConfigured } from "@/lib/supabase/server";
 import type { Role } from "@/types";
 
 export interface PlatformStats {
@@ -67,6 +67,8 @@ function monthStartIso() {
 }
 
 export async function checkSuperAdminExistsAction(): Promise<boolean> {
+  if (!isSupabaseAdminConfigured()) return false;
+
   const admin = createAdminClient();
   const { count } = await admin
     .from("profiles")
