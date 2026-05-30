@@ -9,7 +9,7 @@ import {
   MAX_PRODUCT_PHOTOS,
   MAX_PRODUCT_VIDEOS,
   MAX_VIDEO_BYTES,
-  maxVideoSizeLabel,
+  MAX_VIDEO_MB,
 } from "@/lib/product-media-limits";
 import type { Product } from "@/types";
 
@@ -417,8 +417,10 @@ export async function uploadProductVideoAction(
   if (!videoFile.type.startsWith("video/")) {
     return { error: "El archivo debe ser un vídeo." };
   }
-  if (videoFile.size > MAX_VIDEO_BYTES) {
-    return { error: `El vídeo no puede superar ${maxVideoSizeLabel()}.` };
+  if (videoFile.size > MAX_VIDEO_BYTES * 5) {
+    return {
+      error: `El vídeo es demasiado grande incluso antes de comprimir (máx. ${MAX_VIDEO_MB * 5} MB).`,
+    };
   }
 
   const ext = videoFile.name.split(".").pop()?.toLowerCase() || "mp4";

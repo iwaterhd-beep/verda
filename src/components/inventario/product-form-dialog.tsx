@@ -33,11 +33,11 @@ import {
   removeStorageFileClient,
   syncProductMediaClient,
   productVideoUrls,
+  formatBytes,
 } from "@/lib/data/product-media";
 import {
   MAX_PRODUCT_PHOTOS,
   MAX_PRODUCT_VIDEOS,
-  maxVideoSizeLabel,
 } from "@/lib/product-media-limits";
 import { ProductStrainFields } from "@/components/inventario/product-strain-fields";
 import { isCannabisProduct } from "@/lib/product-strain";
@@ -247,16 +247,36 @@ export function ProductFormDialog({
         return;
       }
 
-      if (productId) {
+      if (productId && pendingVideos.length > 0) {
         let finalVideoUrls = [...videoUrls];
-        for (const pending of pendingVideos) {
-          const up = await uploadProductVideoClient(productId, pending.file);
+        for (let i = 0; i < pendingVideos.length; i++) {
+          const pending = pendingVideos[i];
+          const toastId = toast.loading(
+            `Comprimiendo vídeo ${i + 1}/${pendingVideos.length}…`,
+          );
+          const up = await uploadProductVideoClient(
+            productId,
+            pending.file,
+            (p) => {
+              const label =
+                p.stage === "loading"
+                  ? "Preparando compresor…"
+                  : `Comprimiendo vídeo ${i + 1}/${pendingVideos.length}…`;
+              toast.loading(`${label} ${p.percent}%`, { id: toastId });
+            },
+          );
+          toast.dismiss(toastId);
           if (up.error) {
             toast.error("Producto guardado, pero falló un vídeo", {
               description: up.error,
             });
           } else if (up.url) {
             finalVideoUrls.push(up.url);
+            if (up.compressedSize != null) {
+              toast.success(`Vídeo ${i + 1} listo`, {
+                description: `Comprimido a ${formatBytes(up.compressedSize)}`,
+              });
+            }
           }
         }
 
@@ -537,7 +557,8 @@ export function ProductFormDialog({
               </Button>
             )}
             <p className="text-xs text-muted-foreground">
-              Máximo {maxVideoSizeLabel()} por vídeo · MP4, WebM… Se reproducen en bucle en el menú.
+              Se comprimen automáticamente al guardar (MP4 optimizado para el menú).
+              Puedes subir vídeos pesados; la compresión tarda según la duración.
             </p>
           </div>
 

@@ -1,11 +1,9 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import {
-  MAX_PRODUCT_VIDEOS,
-  MAX_VIDEO_BYTES,
-  maxVideoSizeLabel,
-} from "@/lib/product-media-limits";
+import { compressVideoFile, formatBytes } from "@/lib/compress-video";
+import type { CompressVideoProgress } from "@/lib/compress-video";
+import { MAX_PRODUCT_VIDEOS } from "@/lib/product-media-limits";
 import { storagePathFromPublicUrl } from "@/lib/product-media-storage";
 import type { Product } from "@/types";
 
@@ -50,23 +48,32 @@ export function productHasMedia(product: Product) {
 export async function uploadProductVideoClient(
   productId: string,
   file: File,
-): Promise<{ url?: string; error?: string }> {
+  onProgress?: (progress: CompressVideoProgress) => void,
+): Promise<{ url?: string; error?: string; compressedSize?: number }> {
   if (!file.type.startsWith("video/")) {
     return { error: "El archivo debe ser un vídeo." };
   }
-  if (file.size > MAX_VIDEO_BYTES) {
-    return { error: `El vídeo no puede superar ${maxVideoSizeLabel()}.` };
+
+  let uploadFile = file;
+  try {
+    uploadFile = await compressVideoFile(file, onProgress);
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : "No se pudo comprimir el vídeo. Prueba con un clip más corto.",
+    };
   }
 
   const auth = await staffClubId();
   if ("error" in auth) return { error: auth.error };
 
-  const ext = file.name.split(".").pop()?.toLowerCase() || "mp4";
-  const path = `${auth.clubId}/${productId}/video-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+  const path = `${auth.clubId}/${productId}/video-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.mp4`;
 
   const { error: uploadError } = await auth.supabase.storage
     .from(BUCKET)
-    .upload(path, file, { upsert: false, contentType: file.type });
+    .upload(path, uploadFile, { upsert: false, contentType: "video/mp4" });
 
   if (uploadError) return { error: uploadError.message };
 
@@ -74,7 +81,7 @@ export async function uploadProductVideoClient(
     data: { publicUrl },
   } = auth.supabase.storage.from(BUCKET).getPublicUrl(path);
 
-  return { url: publicUrl };
+  return { url: publicUrl, compressedSize: uploadFile.size };
 }
 
 export async function removeStorageFileClient(
@@ -126,3 +133,5 @@ export async function syncProductMediaClient(
   if (error) return { error: error.message };
   return {};
 }
+
+export { formatBytes };
