@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { QrCode, Wallet, Leaf, ArrowRight, Bell } from "lucide-react";
+import { QrCode, Wallet, ArrowRight, Bell } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,7 +17,6 @@ import { avatarUrl, formatCurrency } from "@/lib/utils";
 export default function PortalHomePage() {
   const { data } = useQuery({ queryKey: ["my-member"], queryFn: fetchMyMember });
   const m = data ?? currentMember;
-  const pct = Math.round((m.consumedThisMonth / m.consumptionLimit) * 100);
   const { data: menuProducts = [] } = useQuery({
     queryKey: ["portal-products"],
     queryFn: fetchClubProducts,
@@ -67,38 +66,17 @@ export default function PortalHomePage() {
         </CardContent>
       </Card>
 
-      {/* Stats rápidas */}
-      <div className="grid grid-cols-2 gap-3">
-        <Card>
-          <CardContent className="p-4">
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Wallet className="h-3.5 w-3.5" /> Monedero
-            </span>
-            <p className="mt-1 text-xl font-semibold">
-              {formatCurrency(m.walletBalance)}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Leaf className="h-3.5 w-3.5" /> Consumo mensual
-            </span>
-            <p className="mt-1 text-xl font-semibold">
-              {m.consumedThisMonth}
-              <span className="text-sm text-muted-foreground">
-                /{m.consumptionLimit}g
-              </span>
-            </p>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-              <div
-                className="h-full rounded-full bg-primary"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Monedero */}
+      <Card>
+        <CardContent className="p-4">
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Wallet className="h-3.5 w-3.5" /> Monedero
+          </span>
+          <p className="mt-1 text-xl font-semibold">
+            {formatCurrency(m.walletBalance)}
+          </p>
+        </CardContent>
+      </Card>
 
       {/* CTA menú */}
       <Link href="/portal/menu">

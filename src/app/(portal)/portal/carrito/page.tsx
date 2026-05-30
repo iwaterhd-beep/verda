@@ -57,8 +57,8 @@ export default function CartPage() {
 
   async function confirm() {
     if (overLimit) {
-      toast.error("Superas tu límite mensual", {
-        description: `Te quedan ${remaining}g disponibles este mes.`,
+      toast.error("No puedes confirmar este pedido", {
+        description: "Contacta con el club si necesitas ayuda.",
       });
       return;
     }
@@ -178,20 +178,14 @@ export default function CartPage() {
         })}
       </div>
 
-      {/* Aviso de límite */}
-      <div
-        className={cn(
-          "rounded-xl border p-3 text-sm",
-          overLimit
-            ? "border-destructive/40 bg-destructive/10 text-destructive"
-            : "border-border bg-secondary/40 text-muted-foreground",
-        )}
-      >
-        <span className="flex items-center gap-2">
-          {overLimit && <AlertTriangle className="h-4 w-4" />}
-          {cartGrams}g en el pedido · te quedan {remaining}g este mes
-        </span>
-      </div>
+      {overLimit && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            No puedes confirmar este pedido. Contacta con el club.
+          </span>
+        </div>
+      )}
 
       {/* Método de pago */}
       <div>

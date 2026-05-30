@@ -49,7 +49,7 @@ export async function placeOrderAction(
 
   if (grams > remaining) {
     return {
-      error: `Superas tu límite mensual. Te quedan ${remaining}g disponibles.`,
+      error: "No puedes confirmar este pedido. Contacta con el club.",
     };
   }
 
