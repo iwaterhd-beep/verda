@@ -27,9 +27,11 @@ import { PhotoUpload } from "@/components/applications/photo-upload";
 import {
   createProductAction,
   updateProductAction,
-  uploadProductVideoAction,
-  removeProductVideoAction,
 } from "@/app/(dashboard)/inventario/actions";
+import {
+  uploadProductVideoClient,
+  removeProductVideoClient,
+} from "@/lib/data/product-media";
 import type { Product } from "@/types";
 
 const categories: { value: Product["category"]; label: string }[] = [
@@ -138,6 +140,13 @@ export function ProductFormDialog({
       return;
     }
 
+    if (photos.some((p) => p.length > 1_500_000)) {
+      toast.error("Alguna foto es demasiado grande", {
+        description: "Usa imágenes más ligeras (máx. ~1,5 MB cada una).",
+      });
+      return;
+    }
+
     const payload = {
       name: trimmedName,
       category,
@@ -175,9 +184,7 @@ export function ProductFormDialog({
       }
 
       if (videoFile && productId) {
-        const fd = new FormData();
-        fd.append("video", videoFile);
-        const up = await uploadProductVideoAction(productId, fd);
+        const up = await uploadProductVideoClient(productId, videoFile);
         if (up.error) {
           toast.error("Producto guardado, pero falló el vídeo", {
             description: up.error,
@@ -213,7 +220,7 @@ export function ProductFormDialog({
     }
     setLoading(true);
     try {
-      const res = await removeProductVideoAction(product.id);
+      const res = await removeProductVideoClient(product.id);
       if (res.error) {
         toast.error("No se pudo quitar el vídeo", { description: res.error });
         return;

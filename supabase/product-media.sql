@@ -22,3 +22,31 @@ drop policy if exists "public read product media" on storage.objects;
 create policy "public read product media"
   on storage.objects for select
   using (bucket_id = 'product-media');
+
+-- Staff sube/borra vídeos en la carpeta de su club
+drop policy if exists "staff upload product media" on storage.objects;
+create policy "staff upload product media"
+  on storage.objects for insert to authenticated
+  with check (
+    bucket_id = 'product-media'
+    and public.is_staff()
+    and (storage.foldername(name))[1] = public.my_club_id()::text
+  );
+
+drop policy if exists "staff update product media" on storage.objects;
+create policy "staff update product media"
+  on storage.objects for update to authenticated
+  using (
+    bucket_id = 'product-media'
+    and public.is_staff()
+    and (storage.foldername(name))[1] = public.my_club_id()::text
+  );
+
+drop policy if exists "staff delete product media" on storage.objects;
+create policy "staff delete product media"
+  on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'product-media'
+    and public.is_staff()
+    and (storage.foldername(name))[1] = public.my_club_id()::text
+  );
