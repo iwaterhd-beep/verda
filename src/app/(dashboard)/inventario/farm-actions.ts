@@ -78,7 +78,94 @@ function toGenetic(r: GeneticRow): FarmGenetic {
 }
 
 function isMissingFarmsTable(message: string) {
-  return /product_farms|farm_genetics/i.test(message);
+  return /product_farms|farm_genetics/i.test(message) &&
+    /does not exist|schema cache/i.test(message);
+}
+
+async function resolveAuthClubId() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado." as const };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("club_id")
+    .eq("id", user.id)
+    .single();
+
+  let clubId = (profile?.club_id as string | null) ?? null;
+  if (!clubId) {
+    const { data: member } = await supabase
+      .from("members")
+      .select("club_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    clubId = (member?.club_id as string | null) ?? null;
+  }
+
+  if (!clubId) return { error: "Sin club asignado." as const };
+  return { clubId, supabase };
+}
+
+export async function listPortalFarmsAction(): Promise<{
+  error?: string;
+  farms?: ProductFarm[];
+}> {
+  const auth = await resolveAuthClubId();
+  if ("error" in auth) return { error: auth.error };
+
+  const { data, error } = await auth.supabase
+    .from("product_farms")
+    .select(
+      "id, name, description, photos, video_urls, sort_order",
+    )
+    .eq("club_id", auth.clubId)
+    .order("sort_order")
+    .order("name");
+
+  if (error) {
+    if (isMissingFarmsTable(error.message)) {
+      return {
+        error: "Ejecuta supabase/product-farms.sql en Supabase.",
+      };
+    }
+    return { error: error.message };
+  }
+
+  return { farms: (data as FarmRow[]).map(toFarm) };
+}
+
+export async function listPortalGeneticsAction(farmId?: string): Promise<{
+  error?: string;
+  genetics?: FarmGenetic[];
+}> {
+  const auth = await resolveAuthClubId();
+  if ("error" in auth) return { error: auth.error };
+
+  let query = auth.supabase
+    .from("farm_genetics")
+    .select(
+      "id, farm_id, name, description, photos, video_urls, price_per_unit, compare_at_price, genetics, thc_percent, origin, sort_order",
+    )
+    .eq("club_id", auth.clubId)
+    .order("sort_order")
+    .order("name");
+
+  if (farmId) query = query.eq("farm_id", farmId);
+
+  const { data, error } = await query;
+  if (error) {
+    if (isMissingFarmsTable(error.message)) {
+      return {
+        error: "Ejecuta supabase/product-farms.sql en Supabase.",
+      };
+    }
+    return { error: error.message };
+  }
+
+  return { genetics: (data as GeneticRow[]).map(toGenetic) };
 }
 
 async function uniqueFarmId(

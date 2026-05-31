@@ -1,6 +1,10 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import {
+  listPortalFarmsAction,
+  listPortalGeneticsAction,
+} from "@/app/(dashboard)/inventario/farm-actions";
 import type { FarmGenetic, Product, ProductFarm } from "@/types";
 
 type FarmRow = {
@@ -63,6 +67,14 @@ const GENETIC_SELECT =
   "id, farm_id, name, description, photos, video_urls, price_per_unit, compare_at_price, genetics, thc_percent, origin, sort_order";
 
 export async function fetchClubFarms(): Promise<ProductFarm[]> {
+  try {
+    const res = await listPortalFarmsAction();
+    if (res.farms) return res.farms;
+    if (res.error && isMissingTableMessage(res.error)) return [];
+  } catch {
+    /* fallback cliente */
+  }
+
   const supabase = createClient();
   const { data, error } = await supabase
     .from("product_farms")
@@ -70,15 +82,28 @@ export async function fetchClubFarms(): Promise<ProductFarm[]> {
     .order("sort_order")
     .order("name");
   if (error) {
-    if (/product_farms/i.test(error.message)) return [];
+    if (isMissingTableMessage(error.message)) return [];
     throw error;
   }
   return (data as FarmRow[]).map(toFarm);
 }
 
+function isMissingTableMessage(message: string) {
+  return /product_farms|farm_genetics/i.test(message) &&
+    (/does not exist|schema cache|Ejecuta supabase/i.test(message));
+}
+
 export async function fetchFarmGenetics(
   farmId?: string,
 ): Promise<FarmGenetic[]> {
+  try {
+    const res = await listPortalGeneticsAction(farmId);
+    if (res.genetics) return res.genetics;
+    if (res.error && isMissingTableMessage(res.error)) return [];
+  } catch {
+    /* fallback cliente */
+  }
+
   const supabase = createClient();
   let query = supabase
     .from("farm_genetics")
@@ -89,7 +114,7 @@ export async function fetchFarmGenetics(
 
   const { data, error } = await query;
   if (error) {
-    if (/farm_genetics/i.test(error.message)) return [];
+    if (isMissingTableMessage(error.message)) return [];
     throw error;
   }
   return (data as GeneticRow[]).map(toGenetic);

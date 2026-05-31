@@ -67,3 +67,25 @@ drop policy if exists "member read farm genetics" on public.farm_genetics;
 create policy "member read farm genetics" on public.farm_genetics
   for select to authenticated
   using (club_id = public.my_club_id());
+
+-- Respaldo: socios leen farms/genéticas del club de su ficha member
+drop policy if exists "member read product farms via member" on public.product_farms;
+create policy "member read product farms via member" on public.product_farms
+  for select to authenticated
+  using (
+    club_id in (
+      select club_id from public.members where user_id = auth.uid()
+    )
+  );
+
+drop policy if exists "member read farm genetics via member" on public.farm_genetics;
+create policy "member read farm genetics via member" on public.farm_genetics
+  for select to authenticated
+  using (
+    club_id in (
+      select club_id from public.members where user_id = auth.uid()
+    )
+  );
+
+grant select on public.product_farms to authenticated;
+grant select on public.farm_genetics to authenticated;

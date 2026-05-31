@@ -23,7 +23,7 @@ export default function PortalHomePage() {
     queryKey: ["portal-products"],
     queryFn: fetchPortalProducts,
   });
-  const { data: farms = [] } = useQuery({
+  const { data: farms = [], isError: farmsError, isLoading: farmsLoading } = useQuery({
     queryKey: ["club-farms"],
     queryFn: fetchClubFarms,
   });
@@ -95,7 +95,7 @@ export default function PortalHomePage() {
         </Card>
       </Link>
 
-      {farms.length > 0 && (
+      {farmsLoading ? null : farms.length > 0 ? (
         <div>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-semibold">Farms</h2>
@@ -116,7 +116,11 @@ export default function PortalHomePage() {
             ))}
           </div>
         </div>
-      )}
+      ) : farmsError ? (
+        <p className="text-center text-sm text-muted-foreground">
+          No se pudieron cargar las farms.
+        </p>
+      ) : null}
 
       {/* Destacados */}
       <div>
