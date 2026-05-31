@@ -5,15 +5,7 @@ import {
   cryptoNetworkValues,
   type CryptoNetwork,
 } from "@/lib/club-crypto";
-
-export type { CryptoNetwork };
-export { cryptoNetworkOptions } from "@/lib/club-crypto";
-
-export interface ClubPaymentSettings {
-  clubName: string;
-  cryptoWalletAddress: string | null;
-  cryptoWalletNetwork: string | null;
-}
+import type { ClubPaymentSettings } from "@/lib/club-payment-settings";
 
 async function resolveClubId() {
   const supabase = await createClient();

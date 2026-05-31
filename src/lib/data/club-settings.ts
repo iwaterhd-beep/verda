@@ -1,9 +1,7 @@
 "use client";
 
-import {
-  getClubPaymentSettingsAction,
-  type ClubPaymentSettings,
-} from "@/app/(dashboard)/configuracion/actions";
+import { getClubPaymentSettingsAction } from "@/app/(dashboard)/configuracion/actions";
+import type { ClubPaymentSettings } from "@/lib/club-payment-settings";
 
 export type { ClubPaymentSettings };
 
