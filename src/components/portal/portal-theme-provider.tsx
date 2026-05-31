@@ -2,11 +2,11 @@
 
 import * as React from "react";
 import {
+  dispatchPortalThemeChange,
   getStoredPortalTheme,
   PORTAL_THEME_STORAGE_KEY,
   type PortalTheme,
 } from "@/lib/portal-theme";
-import { cn } from "@/lib/utils";
 
 interface PortalThemeContextValue {
   theme: PortalTheme;
@@ -19,22 +19,25 @@ const PortalThemeContext = React.createContext<PortalThemeContextValue | null>(
 );
 
 export function PortalThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = React.useState<PortalTheme>("dark");
-  const [ready, setReady] = React.useState(false);
-
-  React.useEffect(() => {
-    setThemeState(getStoredPortalTheme());
-    setReady(true);
-  }, []);
+  const [theme, setThemeState] = React.useState<PortalTheme>(() => {
+    if (typeof window === "undefined") return "dark";
+    return getStoredPortalTheme();
+  });
 
   const setTheme = React.useCallback((next: PortalTheme) => {
     setThemeState(next);
     localStorage.setItem(PORTAL_THEME_STORAGE_KEY, next);
+    dispatchPortalThemeChange(next);
   }, []);
 
   const toggleTheme = React.useCallback(() => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  }, [theme, setTheme]);
+    setThemeState((current) => {
+      const next = current === "dark" ? "light" : "dark";
+      localStorage.setItem(PORTAL_THEME_STORAGE_KEY, next);
+      dispatchPortalThemeChange(next);
+      return next;
+    });
+  }, []);
 
   const value = React.useMemo(
     () => ({ theme, setTheme, toggleTheme }),
@@ -44,10 +47,8 @@ export function PortalThemeProvider({ children }: { children: React.ReactNode })
   return (
     <PortalThemeContext.Provider value={value}>
       <div
-        className={cn(
-          "min-h-screen bg-background text-foreground",
-          ready && theme === "dark" && "dark",
-        )}
+        data-portal-theme={theme}
+        className="min-h-screen bg-background text-foreground"
       >
         {children}
       </div>
