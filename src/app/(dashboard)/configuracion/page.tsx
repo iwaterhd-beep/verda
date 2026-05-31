@@ -1,6 +1,6 @@
 "use client";
 
-import { Palette, Building2, Users2, Plug, Check } from "lucide-react";
+import { Palette, Building2, Users2, Plug, Check, Bitcoin } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CryptoWalletSettings } from "@/components/configuracion/crypto-wallet-settings";
 
 const roles = [
   { name: "Super admin", desc: "Acceso total a todos los clubes", count: 1 },
@@ -49,6 +50,9 @@ export default function ConfiguracionPage() {
           </TabsTrigger>
           <TabsTrigger value="roles">
             <Users2 className="mr-1.5 h-4 w-4" /> Usuarios
+          </TabsTrigger>
+          <TabsTrigger value="pagos">
+            <Bitcoin className="mr-1.5 h-4 w-4" /> Pagos
           </TabsTrigger>
           <TabsTrigger value="integraciones">
             <Plug className="mr-1.5 h-4 w-4" /> Integraciones
@@ -141,6 +145,10 @@ export default function ConfiguracionPage() {
               ))}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="pagos">
+          <CryptoWalletSettings />
         </TabsContent>
 
         <TabsContent value="integraciones">

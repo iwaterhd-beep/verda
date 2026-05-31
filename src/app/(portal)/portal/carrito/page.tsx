@@ -13,6 +13,8 @@ import {
   Bitcoin,
   AlertTriangle,
   ShoppingBag,
+  Copy,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,8 @@ import { placeOrderAction } from "@/app/(portal)/portal/actions";
 import { getCategoryDisplay } from "@/lib/product-meta";
 import { CategoryIconBackdrop } from "@/components/category-icon-backdrop";
 import { fetchClubCategories } from "@/lib/data/product-categories";
+import { fetchClubPaymentSettings } from "@/lib/data/club-settings";
+import { cryptoNetworkLabel } from "@/lib/club-crypto";
 import { formatCurrency, cn } from "@/lib/utils";
 import type { Order } from "@/types";
 
@@ -42,6 +46,7 @@ export default function CartPage() {
   const { items, add, decrement, remove, total, grams, clear } = useCart();
   const [method, setMethod] = React.useState<Order["paymentMethod"]>("WALLET");
   const [paying, setPaying] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
 
   const { data } = useQuery({ queryKey: ["my-member"], queryFn: fetchMyMember });
   const m = data ?? currentMember;
@@ -56,6 +61,26 @@ export default function CartPage() {
     queryKey: ["club-categories"],
     queryFn: fetchClubCategories,
   });
+
+  const { data: paymentSettings } = useQuery({
+    queryKey: ["club-payment-settings"],
+    queryFn: fetchClubPaymentSettings,
+  });
+
+  const cryptoWallet = paymentSettings?.cryptoWalletAddress ?? null;
+  const cryptoNetwork = paymentSettings?.cryptoWalletNetwork ?? null;
+
+  async function copyCryptoAddress() {
+    if (!cryptoWallet) return;
+    try {
+      await navigator.clipboard.writeText(cryptoWallet);
+      setCopied(true);
+      toast.success("Dirección copiada");
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("No se pudo copiar la dirección");
+    }
+  }
 
   async function confirm() {
     if (overLimit) {
@@ -222,6 +247,48 @@ export default function CartPage() {
               <p className="text-amber-900 dark:text-amber-200">
                 Tras el pedido: {formatCurrency(walletAfterOrder)}
               </p>
+            )}
+          </div>
+        )}
+        {method === "CRYPTO" && (
+          <div className="mt-3 space-y-2">
+            {cryptoWallet ? (
+              <div className="rounded-xl border border-primary/30 bg-primary/5 p-3">
+                <p className="text-xs font-medium text-primary">
+                  Envía {formatCurrency(orderTotal)} a esta cartera
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Red: {cryptoNetworkLabel(cryptoNetwork)}
+                </p>
+                <div className="mt-2 flex items-start gap-2">
+                  <code className="min-w-0 flex-1 break-all rounded-lg bg-background px-2 py-1.5 font-mono text-xs">
+                    {cryptoWallet}
+                  </code>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className="shrink-0"
+                    aria-label="Copiar dirección"
+                    onClick={() => void copyCryptoAddress()}
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4 text-primary" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Confirma el pedido y realiza la transferencia. El club verificará
+                  el pago al recoger.
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
+                El club aún no ha configurado una cartera cripto. Puedes confirmar
+                el pedido y pagar en el club.
+              </div>
             )}
           </div>
         )}
