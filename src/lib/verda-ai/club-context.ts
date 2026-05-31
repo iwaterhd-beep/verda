@@ -64,7 +64,7 @@ export async function fetchVerdaAiClubContext(): Promise<
     new Date(now.getFullYear(), now.getMonth() - 1, 1),
   );
 
-  const [membersRes, appsRes, ordersRes, productsRes] = await Promise.all([
+  const [membersRes, appsRes, ordersRes, productsInitial] = await Promise.all([
     supabase
       .from("members")
       .select("status")
@@ -85,18 +85,15 @@ export async function fetchVerdaAiClubContext(): Promise<
       .eq("club_id", clubId),
   ]);
 
-  let productsRes = await supabase
-    .from("products")
-    .select("name, stock, low_stock_threshold, hidden_from_members")
-    .eq("club_id", clubId);
-
-  let hiddenProductCount = 0;
+  let productsRes = productsInitial;
   if (productsRes.error && /hidden_from_members/i.test(productsRes.error.message)) {
     productsRes = await supabase
       .from("products")
       .select("name, stock, low_stock_threshold")
       .eq("club_id", clubId);
   }
+
+  let hiddenProductCount = 0;
 
   if (membersRes.error) return { error: membersRes.error.message };
   if (appsRes.error) return { error: appsRes.error.message };
