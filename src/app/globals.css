@@ -214,6 +214,39 @@
   .portal-protected-media {
     @apply select-none;
     -webkit-touch-callout: none;
+    -webkit-user-drag: none;
+    user-select: none;
+  }
+
+  .portal-protected-media img,
+  .portal-protected-media video {
+    -webkit-user-drag: none;
+    user-drag: none;
+  }
+
+  html.portal-capture-shield .portal-protected-media .portal-media-content {
+    opacity: 0 !important;
+    filter: blur(32px) brightness(0.4) !important;
+    transform: scale(1.12) !important;
+  }
+
+  html.portal-capture-shield .portal-protected-media .portal-media-reveal-overlay {
+    opacity: 1 !important;
+  }
+
+  .portal-media-watermark-strong {
+    background-image: repeating-linear-gradient(
+      -32deg,
+      transparent,
+      transparent 48px,
+      hsl(var(--foreground) / 0.08) 48px,
+      hsl(var(--foreground) / 0.08) 49px
+    );
+  }
+
+  .portal-media-watermark-strong::after {
+    color: hsl(var(--foreground) / 0.16);
+    font-size: 0.65rem;
   }
 
   .portal-media-shield {
