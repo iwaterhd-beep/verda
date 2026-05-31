@@ -183,7 +183,7 @@ export default function CartPage() {
       )}
 
       {walletWillGoNegative && (
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-200">
           <span className="flex items-start gap-2">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             Tu monedero quedará en{" "}
@@ -220,7 +220,7 @@ export default function CartPage() {
               Saldo actual: {formatCurrency(m.walletBalance)}
             </p>
             {walletWillGoNegative && (
-              <p className="text-amber-200">
+              <p className="text-amber-900 dark:text-amber-200">
                 Tras el pedido: {formatCurrency(walletAfterOrder)}
               </p>
             )}

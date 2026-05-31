@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MemberAvatarPicker } from "@/components/portal/member-avatar-picker";
+import { PortalThemeRow } from "@/components/portal/portal-theme-row";
 import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
@@ -133,6 +134,8 @@ export default function PerfilPage() {
             <span className="flex-1 text-left">Cambiar contraseña</span>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </button>
+          <Separator />
+          <PortalThemeRow />
           <Separator />
           <ActionRow
             icon={ShieldCheck}

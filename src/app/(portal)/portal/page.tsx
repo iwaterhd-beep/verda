@@ -5,6 +5,7 @@ import { Wallet, ArrowRight, Bell } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { MemberAvatarPicker } from "@/components/portal/member-avatar-picker";
+import { PortalThemeToggle } from "@/components/portal/portal-theme-toggle";
 import { ProductCard } from "@/components/portal/product-card";
 import { MemberQrCard } from "@/components/portal/member-qr-card";
 import { useQuery } from "@tanstack/react-query";
@@ -34,12 +35,15 @@ export default function PortalHomePage() {
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="touch-target relative" asChild>
-          <Link href="/portal/perfil/notificaciones" aria-label="Notificaciones">
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-primary" />
-          </Link>
-        </Button>
+        <div className="flex items-center gap-1">
+          <PortalThemeToggle />
+          <Button variant="ghost" size="icon" className="touch-target relative" asChild>
+            <Link href="/portal/perfil/notificaciones" aria-label="Notificaciones">
+              <Bell className="h-5 w-5" />
+              <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-primary" />
+            </Link>
+          </Button>
+        </div>
       </header>
 
       <Link href="/portal/perfil/carnet" className="block">
