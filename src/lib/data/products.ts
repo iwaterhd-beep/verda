@@ -33,15 +33,7 @@ type PackItemRow = {
   qty: number;
   unit: string;
   sort_order: number;
-  products?: { name: string } | { name: string }[] | null;
 };
-
-function packItemName(row: PackItemRow): string | undefined {
-  const p = row.products;
-  if (!p) return undefined;
-  if (Array.isArray(p)) return p[0]?.name;
-  return p.name;
-}
 
 function toProduct(r: Row, packItems?: PackItem[]): Product {
   const videoUrls =
@@ -72,19 +64,23 @@ function toProduct(r: Row, packItems?: PackItem[]): Product {
   };
 }
 
-async function fetchPackItemsMap(): Promise<Map<string, PackItem[]>> {
+async function fetchPackItemsMap(
+  productRows: Row[],
+): Promise<Map<string, PackItem[]>> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("product_pack_items")
-    .select("pack_id, product_id, qty, unit, sort_order, products(name)")
+    .select("pack_id, product_id, qty, unit, sort_order")
     .order("sort_order");
   if (error) return new Map();
+
+  const nameById = new Map(productRows.map((p) => [p.id, p.name]));
 
   const map = new Map<string, PackItem[]>();
   for (const row of (data ?? []) as PackItemRow[]) {
     const item: PackItem = {
       productId: row.product_id,
-      productName: packItemName(row),
+      productName: nameById.get(row.product_id),
       qty: Number(row.qty),
       unit: row.unit as PackItem["unit"],
     };
@@ -103,8 +99,9 @@ export async function fetchClubProducts(): Promise<Product[]> {
     .order("name");
   if (error) throw error;
 
-  const packMap = await fetchPackItemsMap();
-  return (data as Row[]).map((r) => toProduct(r, packMap.get(r.id)));
+  const rows = data as Row[];
+  const packMap = await fetchPackItemsMap(rows);
+  return rows.map((r) => toProduct(r, packMap.get(r.id)));
 }
 
 /** Menú del portal: solo productos con stock visible para socios. */

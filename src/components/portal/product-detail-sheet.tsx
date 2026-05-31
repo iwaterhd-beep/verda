@@ -24,7 +24,6 @@ import {
   originLabel,
 } from "@/lib/product-strain";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { formatPackContents } from "@/lib/product-packs";
 import { ProductMediaGallery } from "@/components/portal/product-media-gallery";
 import type { Product } from "@/types";
 
@@ -52,7 +51,6 @@ export function ProductDetailSheet({
   const soldOut = product.stock <= 0;
   const hasMedia = productHasMedia(product);
   const showStrain = !product.isPack && isCannabisProduct(product.category, categories);
-  const packContents = product.isPack ? formatPackContents(product.packItems) : "";
   const thc = formatThcPercent(product.thcPercent);
   const genetics = geneticsLabel(product.genetics);
   const origin = originLabel(product.origin);
@@ -106,8 +104,38 @@ export function ProductDetailSheet({
               </p>
             </div>
 
-            {product.isPack && packContents && (
-              <p className="text-sm text-muted-foreground">{packContents}</p>
+            {product.isPack && (
+              <>
+                <Separator />
+                <div>
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    Contenido del pack
+                  </p>
+                  {product.packItems?.length ? (
+                    <ul className="space-y-2">
+                      {product.packItems.map((item, index) => (
+                        <li
+                          key={`${item.productId}-${index}`}
+                          className="flex items-center justify-between gap-3 rounded-xl border border-border/50 bg-secondary/20 px-3 py-2.5 text-sm"
+                        >
+                          <span className="min-w-0 truncate font-medium">
+                            {item.productName?.trim() || "Producto"}
+                          </span>
+                          <span className="shrink-0 text-muted-foreground">
+                            {item.unit === "g"
+                              ? `${Number(item.qty) % 1 === 0 ? item.qty : item.qty.toFixed(2)}g`
+                              : `${item.qty} ud`}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Este pack no tiene componentes publicados.
+                    </p>
+                  )}
+                </div>
+              </>
             )}
 
             {showStrain && (thc || genetics || origin) && (
