@@ -36,7 +36,7 @@ import { PlanBadge, StatusBadge } from "@/components/members/status-badge";
 import { useQuery } from "@tanstack/react-query";
 import { currentMember } from "@/lib/current-member";
 import { fetchMyMember } from "@/lib/data/members";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, walletBalanceTone, cn } from "@/lib/utils";
 
 export default function PerfilPage() {
   const { data } = useQuery({ queryKey: ["my-member"], queryFn: fetchMyMember });
@@ -79,7 +79,7 @@ export default function PerfilPage() {
               <span className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground">
                 <Wallet className="h-3.5 w-3.5" /> Monedero
               </span>
-              <p className="mt-1 font-semibold">
+              <p className={cn("mt-1 font-semibold", walletBalanceTone(m.walletBalance))}>
                 {formatCurrency(m.walletBalance)}
               </p>
             </div>

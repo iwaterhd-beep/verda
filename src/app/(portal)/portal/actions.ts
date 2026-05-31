@@ -53,9 +53,6 @@ export async function placeOrderAction(
   }
 
   const wallet = Number(member.wallet_balance ?? 0);
-  if (paymentMethod === "WALLET" && total > wallet) {
-    return { error: "Saldo insuficiente en el monedero." };
-  }
 
   const admin = createAdminClient();
   const code = orderCode();

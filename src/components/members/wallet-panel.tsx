@@ -32,7 +32,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { fetchMember, fetchWalletMovements, adjustWallet } from "@/lib/data/members";
-import { formatCurrency, formatDate, cn } from "@/lib/utils";
+import { formatCurrency, formatDate, cn, walletBalanceTone } from "@/lib/utils";
 import type { WalletMovementType } from "@/types";
 
 type Mode = "TOPUP" | "WITHDRAW" | "ADJUST";
@@ -67,18 +67,22 @@ export function WalletPanel({ memberId }: { memberId: string }) {
 
   async function submit() {
     const num = parseFloat(value.replace(",", "."));
-    if (isNaN(num) || num < 0) {
+    if (Number.isNaN(num)) {
       toast.error("Introduce un importe válido");
       return;
     }
     let amount = 0;
     let type: WalletMovementType = "TOPUP";
     if (mode === "TOPUP") {
+      if (num <= 0) {
+        toast.error("La recarga debe ser mayor que 0");
+        return;
+      }
       amount = num;
       type = "TOPUP";
     } else if (mode === "WITHDRAW") {
-      if (num > balance) {
-        toast.error("La retirada supera el saldo disponible");
+      if (num <= 0) {
+        toast.error("La retirada debe ser mayor que 0");
         return;
       }
       amount = -num;
@@ -120,7 +124,10 @@ export function WalletPanel({ memberId }: { memberId: string }) {
     <Card>
       <CardHeader>
         <CardTitle>Cartera / monedero</CardTitle>
-        <CardDescription>Saldo disponible y movimientos</CardDescription>
+        <CardDescription>
+          Saldo disponible y movimientos. Puede quedar en negativo si el club lo
+          permite.
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 to-transparent p-4">
@@ -130,7 +137,7 @@ export function WalletPanel({ memberId }: { memberId: string }) {
             </span>
             <div>
               <p className="text-xs text-muted-foreground">Saldo actual</p>
-              <p className="text-2xl font-semibold tracking-tight">
+              <p className={cn("text-2xl font-semibold tracking-tight", walletBalanceTone(balance))}>
                 {formatCurrency(balance)}
               </p>
             </div>
@@ -193,7 +200,7 @@ export function WalletPanel({ memberId }: { memberId: string }) {
                         {positive ? "+" : ""}
                         {formatCurrency(mv.amount)}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className={cn("text-xs text-muted-foreground", walletBalanceTone(mv.balanceAfter))}>
                         {formatCurrency(mv.balanceAfter)}
                       </p>
                     </div>
@@ -217,8 +224,8 @@ export function WalletPanel({ memberId }: { memberId: string }) {
             </DialogTitle>
             <DialogDescription>
               {mode === "ADJUST"
-                ? `Fija un nuevo saldo absoluto. Saldo actual: ${formatCurrency(balance)}.`
-                : `Saldo actual: ${formatCurrency(balance)}.`}
+                ? `Fija un nuevo saldo absoluto (puede ser negativo). Saldo actual: ${formatCurrency(balance)}.`
+                : `Saldo actual: ${formatCurrency(balance)}. Las retiradas pueden dejar saldo negativo.`}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-2">
@@ -231,7 +238,7 @@ export function WalletPanel({ memberId }: { memberId: string }) {
               autoFocus
               value={value}
               onChange={(e) => setValue(e.target.value)}
-              placeholder="0,00"
+              placeholder={mode === "ADJUST" ? "-10,00" : "0,00"}
             />
             {mode === "TOPUP" && (
               <div className="mt-1 flex gap-2">

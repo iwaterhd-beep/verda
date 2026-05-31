@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 import { currentMember } from "@/lib/current-member";
 import { fetchMyMember } from "@/lib/data/members";
 import { fetchClubProducts } from "@/lib/data/products";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, walletBalanceTone, cn } from "@/lib/utils";
 
 export default function PortalHomePage() {
   const { data } = useQuery({ queryKey: ["my-member"], queryFn: fetchMyMember });
@@ -52,7 +52,7 @@ export default function PortalHomePage() {
           <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Wallet className="h-3.5 w-3.5" /> Monedero
           </span>
-          <p className="mt-1 text-xl font-semibold">
+          <p className={cn("mt-1 text-xl font-semibold", walletBalanceTone(m.walletBalance))}>
             {formatCurrency(m.walletBalance)}
           </p>
         </CardContent>

@@ -13,6 +13,11 @@ export function formatCurrency(value: number) {
   return `${formatted} Crd`;
 }
 
+export function walletBalanceTone(balance: number) {
+  if (balance < 0) return "text-destructive";
+  return "text-foreground";
+}
+
 export function formatNumber(value: number) {
   return new Intl.NumberFormat("es-ES").format(value);
 }

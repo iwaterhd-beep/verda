@@ -48,8 +48,8 @@ export default function CartPage() {
   const remaining = m.consumptionLimit - m.consumedThisMonth;
   const overLimit = cartGrams > remaining;
   const orderTotal = total();
-  const insufficientWallet =
-    method === "WALLET" && orderTotal > m.walletBalance;
+  const walletAfterOrder = m.walletBalance - orderTotal;
+  const walletWillGoNegative = method === "WALLET" && walletAfterOrder < 0;
 
   const { data: categories = [] } = useQuery({
     queryKey: ["club-categories"],
@@ -60,12 +60,6 @@ export default function CartPage() {
     if (overLimit) {
       toast.error("No puedes confirmar este pedido", {
         description: "Contacta con el club si necesitas ayuda.",
-      });
-      return;
-    }
-    if (insufficientWallet) {
-      toast.error("Saldo insuficiente en el monedero", {
-        description: `Tu saldo es ${formatCurrency(m.walletBalance)}. Recárgalo o elige otro método.`,
       });
       return;
     }
@@ -81,7 +75,10 @@ export default function CartPage() {
       queryClient.invalidateQueries({ queryKey: ["my-member"] });
       queryClient.invalidateQueries({ queryKey: ["my-orders"] });
       toast.success("¡Pedido confirmado!", {
-        description: `Código de recogida ${res.order!.code}`,
+        description:
+          method === "WALLET" && walletAfterOrder < 0
+            ? `Código ${res.order!.code}. Tu monedero queda en ${formatCurrency(walletAfterOrder)}.`
+            : `Código de recogida ${res.order!.code}`,
       });
       router.push("/portal/pedidos");
     } finally {
@@ -185,6 +182,17 @@ export default function CartPage() {
         </div>
       )}
 
+      {walletWillGoNegative && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-200">
+          <span className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            Tu monedero quedará en{" "}
+            <strong>{formatCurrency(walletAfterOrder)}</strong>. El club permite
+            saldo negativo; recarga cuando puedas.
+          </span>
+        </div>
+      )}
+
       {/* Método de pago */}
       <div>
         <p className="mb-2 text-sm font-medium">Método de pago</p>
@@ -207,14 +215,16 @@ export default function CartPage() {
           ))}
         </div>
         {method === "WALLET" && (
-          <p
-            className={cn(
-              "mt-2 text-xs",
-              insufficientWallet ? "text-destructive" : "text-muted-foreground",
+          <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+            <p className={cn(m.walletBalance < 0 && "text-destructive")}>
+              Saldo actual: {formatCurrency(m.walletBalance)}
+            </p>
+            {walletWillGoNegative && (
+              <p className="text-amber-200">
+                Tras el pedido: {formatCurrency(walletAfterOrder)}
+              </p>
             )}
-          >
-            Saldo del monedero: {formatCurrency(m.walletBalance)}
-          </p>
+          </div>
         )}
       </div>
 
@@ -244,7 +254,7 @@ export default function CartPage() {
         <Button
           size="lg"
           className="min-h-12 w-full touch-manipulation text-base"
-          disabled={overLimit || insufficientWallet || paying}
+          disabled={overLimit || paying}
           onClick={confirm}
         >
           <ShoppingBag className="h-4 w-4" /> Confirmar pedido
