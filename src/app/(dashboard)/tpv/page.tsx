@@ -13,18 +13,14 @@ import { sales } from "@/lib/mock-data";
 import { fetchClubProducts } from "@/lib/data/products";
 import { ProductPrice } from "@/lib/product-price";
 import { formatCurrency, cn } from "@/lib/utils";
+import {
+  TpvCartLine,
+  type TpvCartLineData,
+} from "@/components/tpv/tpv-cart-line";
 import type { Product } from "@/types";
 
-interface CartLine {
-  id: string;
-  name: string;
-  price: number;
-  qty: number;
-  unit: Product["unit"];
-}
-
 export default function TpvPage() {
-  const [cart, setCart] = React.useState<CartLine[]>([]);
+  const [cart, setCart] = React.useState<TpvCartLineData[]>([]);
   const { data: products = [], isLoading } = useQuery({
     queryKey: ["club-products"],
     queryFn: fetchClubProducts,
@@ -37,18 +33,27 @@ export default function TpvPage() {
     }
     setCart((c) => {
       const found = c.find((l) => l.id === product.id);
-      if (found) return c.map((l) => (l.id === product.id ? { ...l, qty: l.qty + 1 } : l));
+      if (found) {
+        if (product.unit === "g") return c;
+        return c.map((l) =>
+          l.id === product.id ? { ...l, qty: l.qty + 1 } : l,
+        );
+      }
       return [
         ...c,
         {
           id: product.id,
           name: product.name,
           price: product.pricePerUnit,
-          qty: 1,
+          qty: product.unit === "g" ? 0 : 1,
           unit: product.unit,
         },
       ];
     });
+  }
+
+  function setLineQty(id: string, qty: number) {
+    setCart((c) => c.map((l) => (l.id === id ? { ...l, qty } : l)));
   }
 
   function dec(id: string) {
@@ -59,10 +64,15 @@ export default function TpvPage() {
     );
   }
 
-  const total = cart.reduce((a, l) => a + l.price * l.qty, 0);
+  function removeLine(id: string) {
+    setCart((c) => c.filter((l) => l.id !== id));
+  }
+
+  const activeCart = cart.filter((l) => l.qty > 0);
+  const total = activeCart.reduce((a, l) => a + l.price * l.qty, 0);
 
   function checkout(method: string) {
-    if (!cart.length) return toast.error("El carrito está vacío");
+    if (!activeCart.length) return toast.error("El carrito está vacío");
     toast.success("Venta registrada", {
       description: `${formatCurrency(total)} · ${method}`,
     });
@@ -174,41 +184,23 @@ export default function TpvPage() {
                   Selecciona productos para empezar.
                 </p>
               )}
-              {cart.map((l) => (
-                <div key={l.id} className="flex items-center gap-2">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{l.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatCurrency(l.price)}/{l.unit}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => dec(l.id)}
-                    >
-                      <Minus className="h-3 w-3" />
-                    </Button>
-                    <span className="w-5 text-center text-sm">{l.qty}</span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => {
-                        const product = products.find((p) => p.id === l.id);
-                        if (product) add(product);
-                      }}
-                    >
-                      <Plus className="h-3 w-3" />
-                    </Button>
-                  </div>
-                  <span className="w-16 text-right text-sm font-medium">
-                    {formatCurrency(l.price * l.qty)}
-                  </span>
-                </div>
-              ))}
+              {cart.map((l) => {
+                const product = products.find((p) => p.id === l.id);
+                return (
+                  <TpvCartLine
+                    key={l.id}
+                    line={l}
+                    maxQty={product?.stock}
+                    onQtyChange={setLineQty}
+                    onRemove={removeLine}
+                    onDecrement={dec}
+                    onIncrement={(id) => {
+                      const p = products.find((x) => x.id === id);
+                      if (p) add(p);
+                    }}
+                  />
+                );
+              })}
             </div>
 
             <Separator className="my-4" />
