@@ -2,6 +2,15 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { fileToCompressedDataUrl } from "@/lib/image";
+export function friendlyAvatarError(message: string) {
+  if (/bucket not found/i.test(message)) {
+    return "El almacenamiento de fotos no está listo. Contacta con el club.";
+  }
+  if (/avatar_url/i.test(message)) {
+    return "Falta configurar la base de datos. El club debe ejecutar supabase/member-avatars.sql.";
+  }
+  return message;
+}
 
 export const MEMBER_AVATAR_BUCKET = "member-avatars";
 export const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
@@ -47,7 +56,7 @@ export async function uploadMemberAvatarClient(
     .from(MEMBER_AVATAR_BUCKET)
     .upload(path, blob, { upsert: true, contentType: "image/jpeg" });
 
-  if (uploadError) return { error: uploadError.message };
+  if (uploadError) return { error: friendlyAvatarError(uploadError.message) };
 
   const {
     data: { publicUrl },

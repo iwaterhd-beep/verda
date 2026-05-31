@@ -5,8 +5,8 @@ import { Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { saveMemberAvatarAction } from "@/app/(portal)/portal/actions";
-import { uploadMemberAvatarClient } from "@/lib/member-avatar";
+import { uploadMemberAvatarAction } from "@/app/(portal)/portal/actions";
+import { fileToCompressedDataUrl } from "@/lib/image";
 import { memberAvatarUrl } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import type { Member } from "@/types";
@@ -42,19 +42,18 @@ export function MemberAvatarPicker({
 
     setUploading(true);
     try {
-      const { url, error: uploadError } = await uploadMemberAvatarClient(file);
-      if (uploadError || !url) {
-        toast.error("No se pudo subir la foto", { description: uploadError });
+      const dataUrl = await fileToCompressedDataUrl(file, 800, 0.82);
+      const blob = await fetch(dataUrl).then((response) => response.blob());
+      const formData = new FormData();
+      formData.append("avatar", blob, "avatar.jpg");
+
+      const res = await uploadMemberAvatarAction(formData);
+      if (res.error || !res.url) {
+        toast.error("No se pudo subir la foto", { description: res.error });
         return;
       }
 
-      const res = await saveMemberAvatarAction(url);
-      if (res.error) {
-        toast.error("No se pudo guardar la foto", { description: res.error });
-        return;
-      }
-
-      setPreviewUrl(url);
+      setPreviewUrl(res.url);
       queryClient.invalidateQueries({ queryKey: ["my-member"] });
       toast.success("Foto de perfil actualizada");
     } catch {

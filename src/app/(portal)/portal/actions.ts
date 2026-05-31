@@ -2,6 +2,11 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { cartItemGrams } from "@/lib/product-packs";
+import { MAX_AVATAR_BYTES } from "@/lib/member-avatar";
+import {
+  friendlyAvatarError,
+  uploadMemberAvatarBuffer,
+} from "@/lib/member-avatar-server";
 import type { CartItem, Order } from "@/types";
 
 export interface PlaceOrderResult {
@@ -155,6 +160,68 @@ export async function changePasswordAction(
   const { error } = await supabase.auth.updateUser({ password });
   if (error) return { error: error.message };
   return {};
+}
+
+export async function uploadMemberAvatarAction(
+  formData: FormData,
+): Promise<{ url?: string; error?: string }> {
+  const file = formData.get("avatar");
+  if (
+    !file ||
+    typeof file === "string" ||
+    !("size" in file) ||
+    file.size === 0
+  ) {
+    return { error: "Selecciona una imagen." };
+  }
+
+  const imageFile = file as File;
+  if (!imageFile.type.startsWith("image/")) {
+    return { error: "El archivo debe ser una imagen." };
+  }
+  if (imageFile.size > MAX_AVATAR_BYTES) {
+    return { error: "La imagen no puede superar 5 MB." };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No has iniciado sesión." };
+
+  const { data: member, error: memberErr } = await supabase
+    .from("members")
+    .select("id, club_id")
+    .eq("user_id", user.id)
+    .single();
+  if (memberErr || !member?.club_id) {
+    return { error: "No encontramos tu ficha de socio." };
+  }
+
+  const admin = createAdminClient();
+  const buffer = Buffer.from(await imageFile.arrayBuffer());
+  const contentType = imageFile.type || "image/jpeg";
+
+  const uploaded = await uploadMemberAvatarBuffer(
+    admin,
+    member.club_id,
+    member.id,
+    buffer,
+    contentType,
+  );
+  if (uploaded.error || !uploaded.url) {
+    return { error: uploaded.error ?? "No se pudo subir la foto." };
+  }
+
+  const { error: updateError } = await admin
+    .from("members")
+    .update({ avatar_url: uploaded.url })
+    .eq("id", member.id);
+  if (updateError) {
+    return { error: friendlyAvatarError(updateError.message) };
+  }
+
+  return { url: `${uploaded.url}?v=${Date.now()}` };
 }
 
 export async function saveMemberAvatarAction(
