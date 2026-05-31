@@ -155,6 +155,42 @@ export async function uploadProductVideoClient(
   return { url: publicUrl };
 }
 
+/** Vídeos de farms/genéticas en product-media/{clubId}/{prefix}/... */
+export async function uploadCatalogVideoClient(
+  storagePrefix: string,
+  file: File,
+  onProgress?: (pct: number) => void,
+): Promise<{ url?: string; error?: string }> {
+  if (!file.type.startsWith("video/")) {
+    return { error: "El archivo debe ser un vídeo." };
+  }
+  if (file.size > MAX_VIDEO_BYTES) {
+    return { error: `El vídeo no puede superar ${maxVideoSizeLabel()}.` };
+  }
+
+  const auth = await staffClubId();
+  if ("error" in auth) return { error: auth.error };
+
+  const ext = file.name.split(".").pop()?.toLowerCase() || "mp4";
+  const path = `${auth.clubId}/${storagePrefix}/video-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.${ext}`;
+
+  const { error: uploadError } = await uploadFileWithProgress(
+    auth.supabase,
+    BUCKET,
+    path,
+    file,
+    onProgress,
+  );
+
+  if (uploadError) return { error: uploadError };
+
+  const {
+    data: { publicUrl },
+  } = auth.supabase.storage.from(BUCKET).getPublicUrl(path);
+
+  return { url: publicUrl };
+}
+
 export async function uploadProductVideosParallel(
   productId: string,
   files: File[],

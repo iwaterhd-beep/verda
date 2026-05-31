@@ -15,6 +15,7 @@ import { ProductPrice } from "@/lib/product-price";
 import { formatCurrency, cn } from "@/lib/utils";
 import {
   TpvCartLine,
+  tpvLineStockQty,
   type TpvCartLineData,
 } from "@/components/tpv/tpv-cart-line";
 import type { Product } from "@/types";
@@ -53,7 +54,21 @@ export default function TpvPage() {
   }
 
   function setLineQty(id: string, qty: number) {
-    setCart((c) => c.map((l) => (l.id === id ? { ...l, qty } : l)));
+    setCart((c) =>
+      c.map((l) => {
+        if (l.id !== id) return l;
+        const prevQty = l.qty;
+        const syncedActual =
+          l.actualQty == null || l.actualQty === prevQty ? qty : l.actualQty;
+        return { ...l, qty, actualQty: syncedActual };
+      }),
+    );
+  }
+
+  function setLineActualQty(id: string, actualQty: number) {
+    setCart((c) =>
+      c.map((l) => (l.id === id ? { ...l, actualQty } : l)),
+    );
   }
 
   function dec(id: string) {
@@ -73,6 +88,19 @@ export default function TpvPage() {
 
   function checkout(method: string) {
     if (!activeCart.length) return toast.error("El carrito está vacío");
+
+    for (const line of activeCart) {
+      const product = products.find((p) => p.id === line.id);
+      if (!product) continue;
+      const stockQty = tpvLineStockQty(line);
+      if (stockQty > product.stock) {
+        toast.error(`Stock insuficiente para ${line.name}`, {
+          description: `Disponible: ${product.stock.toFixed(2)}g · servido: ${stockQty.toFixed(2)}g`,
+        });
+        return;
+      }
+    }
+
     toast.success("Venta registrada", {
       description: `${formatCurrency(total)} · ${method}`,
     });
@@ -192,6 +220,7 @@ export default function TpvPage() {
                     line={l}
                     maxQty={product?.stock}
                     onQtyChange={setLineQty}
+                    onActualQtyChange={setLineActualQty}
                     onRemove={removeLine}
                     onDecrement={dec}
                     onIncrement={(id) => {

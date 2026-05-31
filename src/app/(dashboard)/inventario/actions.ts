@@ -97,6 +97,8 @@ export interface ProductInput {
   origin?: Product["origin"];
   description?: string;
   hiddenFromMembers?: boolean;
+  farmId?: string | null;
+  geneticId?: string | null;
 }
 
 export interface ProductActionResult {
@@ -232,12 +234,14 @@ function rowFromInput(
     video_urls: input.videoUrls ?? [],
     video_url: input.videoUrls?.[0] ?? null,
     hidden_from_members: Boolean(input.hiddenFromMembers),
+    farm_id: input.farmId ?? null,
+    genetic_id: input.geneticId ?? null,
     ...strainFieldsFromInput(input, isCannabis && !isPack),
   };
 }
 
 function isMissingOptionalColumnError(message: string) {
-  return /photos|video_url|video_urls|grower|extractor|thc_percent|genetics|origin|description|is_pack|hidden_from_members|compare_at_price/i.test(
+  return /photos|video_url|video_urls|grower|extractor|thc_percent|genetics|origin|description|is_pack|hidden_from_members|compare_at_price|farm_id|genetic_id/i.test(
     message,
   );
 }
@@ -295,6 +299,8 @@ function baseRowFromInput(
     description: _d,
     hidden_from_members: _hfm,
     compare_at_price: _cap,
+    farm_id: _fi,
+    genetic_id: _gi,
     ...base
   } = row;
   return base;

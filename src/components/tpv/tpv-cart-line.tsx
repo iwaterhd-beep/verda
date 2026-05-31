@@ -26,14 +26,23 @@ export interface TpvCartLineData {
   id: string;
   name: string;
   price: number;
+  /** Gramos/unidades cobrados (base del precio). */
   qty: number;
+  /** Peso real servido; solo en productos por gramo. Si no se indica, coincide con qty. */
+  actualQty?: number | null;
   unit: "g" | "ud" | "pack";
+}
+
+export function tpvLineStockQty(line: TpvCartLineData): number {
+  if (line.unit === "g") return line.actualQty ?? line.qty;
+  return line.qty;
 }
 
 interface TpvCartLineProps {
   line: TpvCartLineData;
   maxQty?: number;
   onQtyChange: (id: string, qty: number) => void;
+  onActualQtyChange: (id: string, actualQty: number) => void;
   onRemove: (id: string) => void;
   onIncrement: (id: string) => void;
   onDecrement: (id: string) => void;
@@ -43,6 +52,7 @@ export function TpvCartLine({
   line,
   maxQty,
   onQtyChange,
+  onActualQtyChange,
   onRemove,
   onIncrement,
   onDecrement,
@@ -53,6 +63,7 @@ export function TpvCartLine({
         line={line}
         maxQty={maxQty}
         onQtyChange={onQtyChange}
+        onActualQtyChange={onActualQtyChange}
         onRemove={onRemove}
       />
     );
@@ -96,23 +107,36 @@ export function TpvCartLine({
   );
 }
 
+function gramMarginText(charged: number, actual: number) {
+  const diff = roundGramQty(actual - charged);
+  if (diff === 0) return null;
+  const sign = diff > 0 ? "+" : "";
+  return `${sign}${diff.toFixed(2)}g`;
+}
+
 function GramLine({
   line,
   maxQty,
   onQtyChange,
+  onActualQtyChange,
   onRemove,
 }: {
   line: TpvCartLineData;
   maxQty?: number;
   onQtyChange: (id: string, qty: number) => void;
+  onActualQtyChange: (id: string, actualQty: number) => void;
   onRemove: (id: string) => void;
 }) {
   const [gramsText, setGramsText] = React.useState("");
   const [priceText, setPriceText] = React.useState("");
+  const [actualText, setActualText] = React.useState("");
   const [gramsFocused, setGramsFocused] = React.useState(false);
   const [priceFocused, setPriceFocused] = React.useState(false);
+  const [actualFocused, setActualFocused] = React.useState(false);
 
-  const clampQty = React.useCallback(
+  const servedQty = line.actualQty ?? line.qty;
+
+  const clampGrams = React.useCallback(
     (qty: number) => {
       const rounded = roundGramQty(Math.max(0, qty));
       if (maxQty != null && maxQty >= 0) {
@@ -136,8 +160,18 @@ function GramLine({
     }
   }, [line.qty, line.price, priceFocused]);
 
+  React.useEffect(() => {
+    if (!actualFocused) {
+      setActualText(servedQty > 0 ? servedQty.toFixed(2) : "");
+    }
+  }, [servedQty, actualFocused]);
+
   function applyQty(nextQty: number) {
-    onQtyChange(line.id, clampQty(nextQty));
+    onQtyChange(line.id, clampGrams(nextQty));
+  }
+
+  function applyActual(nextActual: number) {
+    onActualQtyChange(line.id, clampGrams(nextActual));
   }
 
   function handleGramsChange(raw: string) {
@@ -161,7 +195,18 @@ function GramLine({
     applyQty(parsed / line.price);
   }
 
+  function handleActualChange(raw: string) {
+    setActualText(raw);
+    const parsed = parseDecimal(raw);
+    if (parsed == null) {
+      applyActual(line.qty);
+      return;
+    }
+    applyActual(parsed);
+  }
+
   const lineTotal = roundMoney(line.qty * line.price);
+  const margin = line.qty > 0 ? gramMarginText(line.qty, servedQty) : null;
 
   return (
     <div className="rounded-xl border border-border/60 bg-secondary/10 p-3 space-y-2">
@@ -182,7 +227,7 @@ function GramLine({
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         <div className="space-y-1">
           <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             Gramos
@@ -216,11 +261,36 @@ function GramLine({
             onChange={(e) => handlePriceChange(e.target.value)}
           />
         </div>
+        <div className="space-y-1">
+          <label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Reales
+          </label>
+          <div className="relative">
+            <Input
+              inputMode="decimal"
+              placeholder="0,00"
+              className="h-9 pr-7 tabular-nums"
+              value={actualText}
+              onFocus={() => setActualFocused(true)}
+              onBlur={() => setActualFocused(false)}
+              onChange={(e) => handleActualChange(e.target.value)}
+            />
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+              g
+            </span>
+          </div>
+        </div>
       </div>
 
       {line.qty > 0 && (
         <p className="text-xs text-muted-foreground tabular-nums">
-          {fmtLineQty(line.qty, "g")} · {formatCurrency(lineTotal)}
+          {fmtLineQty(line.qty, "g")} cobrados · {formatCurrency(lineTotal)}
+          {margin ? (
+            <span className="text-amber-500/90">
+              {" "}
+              · real {servedQty.toFixed(2)}g ({margin})
+            </span>
+          ) : null}
         </p>
       )}
     </div>

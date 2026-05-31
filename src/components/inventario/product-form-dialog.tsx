@@ -42,6 +42,7 @@ import {
 } from "@/lib/product-media-limits";
 import { formatFileSize } from "@/lib/utils";
 import { ProductStrainFields } from "@/components/inventario/product-strain-fields";
+import { ProductGeneticLinkFields } from "@/components/inventario/product-genetic-link-fields";
 import { isCannabisProduct } from "@/lib/product-strain";
 import { productCategoriesFromList, unitMeta, unitOptions } from "@/lib/product-meta";
 import {
@@ -51,7 +52,7 @@ import {
 } from "@/components/inventario/product-pack-fields";
 import { fetchClubCategories } from "@/lib/data/product-categories";
 import type { ProductGenetics, ProductOrigin } from "@/lib/product-strain";
-import type { Product } from "@/types";
+import type { FarmGenetic, Product } from "@/types";
 
 const MAX_PHOTOS = MAX_PRODUCT_PHOTOS;
 
@@ -77,6 +78,7 @@ export function ProductFormDialog({
   const [loading, setLoading] = React.useState(false);
   const [name, setName] = React.useState(product?.name ?? "");
   const nameRef = React.useRef<HTMLInputElement>(null);
+  const priceInputRef = React.useRef<HTMLInputElement>(null);
   const [category, setCategory] = React.useState<Product["category"]>(
     product?.category ?? "FLOR",
   );
@@ -92,6 +94,8 @@ export function ProductFormDialog({
   const [genetics, setGenetics] = React.useState<ProductGenetics | "">(
     product?.genetics ?? "",
   );
+  const [farmId, setFarmId] = React.useState(product?.farmId ?? "");
+  const [geneticId, setGeneticId] = React.useState(product?.geneticId ?? "");
   const [origin, setOrigin] = React.useState<ProductOrigin | "">(
     product?.origin ?? "",
   );
@@ -121,6 +125,8 @@ export function ProductFormDialog({
     setHiddenFromMembers(product?.hiddenFromMembers ?? false);
     setPackItems(packItemsFromProduct(product));
     setGenetics(product?.genetics ?? "");
+    setFarmId(product?.farmId ?? "");
+    setGeneticId(product?.geneticId ?? "");
     setOrigin(product?.origin ?? "");
     setPhotos(product?.photos ?? []);
     setVideoUrls(product ? productVideoUrls(product) : []);
@@ -232,6 +238,19 @@ export function ProductFormDialog({
     });
   }
 
+  function applyGeneticLink(genetic: FarmGenetic | null) {
+    setGeneticId(genetic?.id ?? "");
+    if (!genetic) return;
+    setName(genetic.name);
+    if (genetic.photos.length) setPhotos(genetic.photos);
+    if (genetic.videoUrls.length) setVideoUrls(genetic.videoUrls);
+    setGenetics(genetic.genetics ?? "");
+    setOrigin(genetic.origin ?? "");
+    if (priceInputRef.current) {
+      priceInputRef.current.value = String(genetic.pricePerUnit);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
@@ -312,6 +331,8 @@ export function ProductFormDialog({
       genetics: isCannabisProduct(category, categories) ? genetics || null : null,
       origin: isCannabisProduct(category, categories) ? origin || null : null,
       description: String(formData.get("description") || ""),
+      farmId: farmId || null,
+      geneticId: geneticId || null,
     };
 
     setLoading(true);
@@ -524,6 +545,7 @@ export function ProductFormDialog({
               <Input
                 id="pricePerUnit"
                 name="pricePerUnit"
+                ref={priceInputRef}
                 type="number"
                 min={0}
                 step="0.01"
@@ -595,6 +617,19 @@ export function ProductFormDialog({
               />
             </div>
           </div>
+
+          {!isPack && isCannabisProduct(category, categories) && (
+            <ProductGeneticLinkFields
+              farmId={farmId}
+              geneticId={geneticId}
+              onFarmChange={setFarmId}
+              onGeneticChange={(g) => {
+                if (g) setFarmId(g.farmId);
+                applyGeneticLink(g);
+              }}
+              enabled={open}
+            />
+          )}
 
           {!isPack && isCannabisProduct(category, categories) && (
             <ProductStrainFields

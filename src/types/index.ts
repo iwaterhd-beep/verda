@@ -60,6 +60,34 @@ export interface ProductCategory {
   color?: string | null;
 }
 
+export interface ProductFarm {
+  id: string;
+  name: string;
+  description?: string | null;
+  photos: string[];
+  videoUrls: string[];
+  sortOrder: number;
+}
+
+export interface FarmGenetic {
+  id: string;
+  farmId: string;
+  name: string;
+  description?: string | null;
+  photos: string[];
+  videoUrls: string[];
+  pricePerUnit: number;
+  compareAtPrice?: number | null;
+  genetics?: "INDICA" | "SATIVA" | "HYBRID" | null;
+  thcPercent?: number | null;
+  origin?: "SPAIN" | "CALIFORNIA" | "NETHERLANDS" | "THAILAND" | "CANADA" | null;
+  sortOrder: number;
+  /** Stock agregado de productos vinculados (portal). */
+  stock?: number;
+  /** Producto de inventario para añadir al carrito. */
+  productId?: string | null;
+}
+
 export interface PackItem {
   productId: string;
   productName?: string;
@@ -94,6 +122,10 @@ export interface Product {
   genetics?: "INDICA" | "SATIVA" | "HYBRID" | null;
   origin?: "SPAIN" | "CALIFORNIA" | "NETHERLANDS" | "THAILAND" | "CANADA" | null;
   description?: string | null;
+  /** Farm del catálogo (opcional). */
+  farmId?: string | null;
+  /** Genética del catálogo (opcional). */
+  geneticId?: string | null;
   /** No visible en el menú del portal; solo staff puede dispensar. */
   hiddenFromMembers?: boolean;
 }

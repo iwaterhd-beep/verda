@@ -1,13 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, Sprout } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { ProductCard } from "@/components/portal/product-card";
+import { FarmGeneticCard } from "@/components/portal/farm-genetic-card";
 import { CartBar } from "@/components/portal/cart-bar";
 import { fetchPortalProducts } from "@/lib/data/products";
 import { fetchClubCategories } from "@/lib/data/product-categories";
+import {
+  fetchClubFarms,
+  fetchFarmGenetics,
+  fetchPortalFarmGenetics,
+} from "@/lib/data/product-farms";
 import { getCategoryDisplay, categoryChipStyle } from "@/lib/product-meta";
 import { useCart } from "@/store/use-cart";
 import { cn } from "@/lib/utils";
@@ -15,6 +21,7 @@ import { cn } from "@/lib/utils";
 export default function MenuPage() {
   const [query, setQuery] = React.useState("");
   const [category, setCategory] = React.useState<string>("ALL");
+  const [farm, setFarm] = React.useState<string>("ALL");
   const cartCount = useCart((s) => s.count());
 
   const { data: products = [], isLoading, error } = useQuery({
@@ -27,15 +34,50 @@ export default function MenuPage() {
     queryFn: fetchClubCategories,
   });
 
+  const { data: farms = [] } = useQuery({
+    queryKey: ["club-farms"],
+    queryFn: fetchClubFarms,
+  });
+
+  const { data: allGenetics = [] } = useQuery({
+    queryKey: ["farm-genetics-all"],
+    queryFn: () => fetchFarmGenetics(),
+  });
+
+  const { data: farmGenetics = [], isLoading: geneticsLoading } = useQuery({
+    queryKey: ["portal-farm-genetics", farm, products.map((p) => p.id).join(",")],
+    queryFn: () =>
+      fetchPortalFarmGenetics(products, farm === "ALL" ? undefined : farm),
+    enabled: farm !== "ALL" && !isLoading,
+  });
+
   const availableCategories = categories.filter((c) =>
     products.some((p) => p.category === c.id),
   );
 
-  const filtered = products.filter((p) => {
+  const availableFarms = farms.filter(
+    (f) =>
+      allGenetics.some((g) => g.farmId === f.id) ||
+      products.some((p) => p.farmId === f.id),
+  );
+
+  const filteredProducts = products.filter((p) => {
     const matchesQuery = p.name.toLowerCase().includes(query.toLowerCase());
     const matchesCat = category === "ALL" || p.category === category;
-    return matchesQuery && matchesCat;
+    const matchesFarm = farm === "ALL" || p.farmId === farm;
+    return matchesQuery && matchesCat && matchesFarm;
   });
+
+  const filteredGenetics = farmGenetics.filter((g) => {
+    const matchesQuery = g.name.toLowerCase().includes(query.toLowerCase());
+    const matchesFarm = farm === "ALL" || g.farmId === farm;
+    return matchesQuery && matchesFarm;
+  });
+
+  const showFarmCatalog = farm !== "ALL" || availableFarms.length > 0;
+  const useGeneticView = farm !== "ALL";
+
+  const farmsById = Object.fromEntries(farms.map((f) => [f.id, f.name]));
 
   return (
     <div
@@ -58,26 +100,59 @@ export default function MenuPage() {
         />
       </div>
 
-      <div className="portal-scroll-x -mx-4 flex gap-2 px-4 pb-1">
-        <Chip active={category === "ALL"} onClick={() => setCategory("ALL")}>
-          Todo
-        </Chip>
-        {availableCategories.map((c) => {
-          const display = getCategoryDisplay(c.id, categories);
-          return (
-            <Chip
-              key={c.id}
-              active={category === c.id}
-              accentColor={display.color}
-              onClick={() => setCategory(c.id)}
-            >
-              {display.emoji} {display.label}
-            </Chip>
-          );
-        })}
+      <div className="space-y-2">
+        <p className="px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          Categorías
+        </p>
+        <div className="portal-scroll-x -mx-4 flex gap-2 px-4 pb-1">
+          <Chip active={category === "ALL"} onClick={() => setCategory("ALL")}>
+            Todo
+          </Chip>
+          {availableCategories.map((c) => {
+            const display = getCategoryDisplay(c.id, categories);
+            return (
+              <Chip
+                key={c.id}
+                active={category === c.id}
+                accentColor={display.color}
+                onClick={() => setCategory(c.id)}
+              >
+                {display.emoji} {display.label}
+              </Chip>
+            );
+          })}
+        </div>
       </div>
 
-      {isLoading ? (
+      {showFarmCatalog && availableFarms.length > 0 && (
+        <div className="space-y-2">
+          <p className="flex items-center gap-1.5 px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <Sprout className="h-3 w-3" />
+            Farms
+          </p>
+          <div className="portal-scroll-x -mx-4 flex gap-2 px-4 pb-1">
+            <Chip
+              active={farm === "ALL"}
+              onClick={() => setFarm("ALL")}
+              accentColor="#10b981"
+            >
+              Todas
+            </Chip>
+            {availableFarms.map((f) => (
+              <Chip
+                key={f.id}
+                active={farm === f.id}
+                accentColor="#10b981"
+                onClick={() => setFarm(f.id)}
+              >
+                🌱 {f.name}
+              </Chip>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isLoading || (useGeneticView && geneticsLoading) ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
@@ -85,12 +160,31 @@ export default function MenuPage() {
         <p className="py-12 text-center text-sm text-destructive">
           No se pudo cargar el menú.
         </p>
+      ) : useGeneticView ? (
+        <div className="space-y-3">
+          {filteredGenetics.map((g) => {
+            const linked = products.find((p) => p.id === g.productId);
+            return (
+              <FarmGeneticCard
+                key={g.id}
+                genetic={g}
+                farmName={farmsById[g.farmId] ?? "Farm"}
+                product={linked}
+              />
+            );
+          })}
+          {filteredGenetics.length === 0 && (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              No hay genéticas en esta farm.
+            </p>
+          )}
+        </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((p) => (
+          {filteredProducts.map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}
-          {filtered.length === 0 && (
+          {filteredProducts.length === 0 && (
             <p className="py-12 text-center text-sm text-muted-foreground">
               {products.length === 0
                 ? "Tu club aún no ha publicado productos en el menú."

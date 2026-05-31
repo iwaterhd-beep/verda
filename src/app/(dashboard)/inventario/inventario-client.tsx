@@ -19,6 +19,7 @@ import {
 import { fetchClubProducts } from "@/lib/data/products";
 import { CreateProductDialog } from "@/components/inventario/create-product-dialog";
 import { ManageCategoriesDialog } from "@/components/inventario/manage-categories-dialog";
+import { ManageFarmsDialog } from "@/components/inventario/manage-farms-dialog";
 import {
   EditProductDialog,
 } from "@/components/inventario/product-form-dialog";
@@ -77,6 +78,7 @@ export function InventarioClient() {
         description="Stock real del club. Se actualiza al marcar pedidos como listos."
       >
         <ManageCategoriesDialog />
+        <ManageFarmsDialog />
         <CreateProductDialog />
       </PageHeader>
 

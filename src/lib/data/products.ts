@@ -27,6 +27,8 @@ type Row = {
   origin?: Product["origin"];
   description?: string | null;
   hidden_from_members?: boolean | null;
+  farm_id?: string | null;
+  genetic_id?: string | null;
 };
 
 type PackItemRow = {
@@ -66,6 +68,8 @@ function toProduct(r: Row, packItems?: PackItem[]): Product {
     origin: r.origin ?? null,
     description: r.description ?? null,
     hiddenFromMembers: Boolean(r.hidden_from_members),
+    farmId: r.farm_id ?? null,
+    geneticId: r.genetic_id ?? null,
   };
 }
 
