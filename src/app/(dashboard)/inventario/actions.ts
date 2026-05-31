@@ -11,7 +11,7 @@ import {
   MAX_VIDEO_BYTES,
   MAX_VIDEO_MB,
 } from "@/lib/product-media-limits";
-import type { Product } from "@/types";
+import type { PackItem, Product, ProductUnit } from "@/types";
 
 async function staffClubId() {
   const supabase = await createClient();
@@ -67,16 +67,24 @@ export async function ensureClubCatalogAction(): Promise<{ error?: string }> {
   return {};
 }
 
+export interface PackItemInput {
+  productId: string;
+  qty: number;
+  unit: "g" | "ud";
+}
+
 export interface ProductInput {
   name: string;
   category: string;
   sku?: string;
   stock: number;
-  unit: "g" | "ud";
+  unit: ProductUnit;
   lowStockThreshold: number;
   pricePerUnit: number;
   batch?: string;
   expiresAt?: string | null;
+  isPack?: boolean;
+  packItems?: PackItemInput[];
   photos?: string[];
   videoUrls?: string[];
   /** @deprecated Usa videoUrls */
@@ -102,7 +110,7 @@ const ALLOWED_ORIGINS = [
   "THAILAND",
   "CANADA",
 ] as const;
-const ALLOWED_UNITS = ["g", "ud"] as const;
+const ALLOWED_UNITS = ["g", "ud", "pack"] as const;
 
 function strainFieldsFromInput(input: ProductInput, isCannabis: boolean) {
   if (!isCannabis) {
@@ -142,7 +150,10 @@ function productIdFromName(name: string) {
   return `p-${base || "prod"}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
-function validateProductInput(input: ProductInput): string | null {
+function validateProductInput(
+  input: ProductInput,
+  productId?: string,
+): string | null {
   const name = input.name.trim();
   if (!name) return "El nombre es obligatorio.";
   if (!(input.stock >= 0)) return "El stock no puede ser negativo.";
@@ -150,7 +161,25 @@ function validateProductInput(input: ProductInput): string | null {
   if (!(input.lowStockThreshold >= 0)) {
     return "El umbral de stock bajo no puede ser negativo.";
   }
-  if (!ALLOWED_UNITS.includes(input.unit)) return "Unidad de venta no válida.";
+
+  if (input.isPack) {
+    if (!input.packItems?.length) {
+      return "Añade al menos un producto al pack.";
+    }
+    for (const item of input.packItems) {
+      if (!item.productId) return "Selecciona todos los productos del pack.";
+      if (item.productId === productId) {
+        return "Un pack no puede incluirse a sí mismo.";
+      }
+      if (!(item.qty > 0)) return "Las cantidades del pack deben ser mayores que 0.";
+      if (item.unit !== "g" && item.unit !== "ud") {
+        return "Unidad de pack no válida.";
+      }
+    }
+  } else if (input.unit !== "g" && input.unit !== "ud") {
+    return "Unidad de venta no válida.";
+  }
+
   if ((input.photos?.length ?? 0) > MAX_PRODUCT_PHOTOS) {
     return `Máximo ${MAX_PRODUCT_PHOTOS} fotos por producto.`;
   }
@@ -174,12 +203,14 @@ function rowFromInput(
   skuFallback: string,
   isCannabis: boolean,
 ) {
+  const isPack = Boolean(input.isPack);
   return {
     name: input.name.trim(),
     category: input.category,
     sku: input.sku?.trim() || skuFallback,
     stock: Math.round(input.stock * 100) / 100,
-    unit: input.unit,
+    unit: isPack ? "pack" : input.unit,
+    is_pack: isPack,
     low_stock_threshold: Math.round(input.lowStockThreshold * 100) / 100,
     price_per_unit: Math.round(input.pricePerUnit * 100) / 100,
     batch: input.batch?.trim() || null,
@@ -187,14 +218,49 @@ function rowFromInput(
     photos: input.photos ?? [],
     video_urls: input.videoUrls ?? [],
     video_url: input.videoUrls?.[0] ?? null,
-    ...strainFieldsFromInput(input, isCannabis),
+    ...strainFieldsFromInput(input, isCannabis && !isPack),
   };
 }
 
 function isMissingOptionalColumnError(message: string) {
-  return /photos|video_url|video_urls|grower|extractor|thc_percent|genetics|origin|description/i.test(
+  return /photos|video_url|video_urls|grower|extractor|thc_percent|genetics|origin|description|is_pack/i.test(
     message,
   );
+}
+
+function isMissingPackTableError(message: string) {
+  return /product_pack_items/i.test(message);
+}
+
+async function syncPackItems(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  clubId: string,
+  packId: string,
+  items: PackItemInput[],
+) {
+  const { error: delErr } = await supabase
+    .from("product_pack_items")
+    .delete()
+    .eq("club_id", clubId)
+    .eq("pack_id", packId);
+  if (delErr && !isMissingPackTableError(delErr.message)) {
+    return delErr.message;
+  }
+
+  if (!items.length) return null;
+
+  const { error: insErr } = await supabase.from("product_pack_items").insert(
+    items.map((item, index) => ({
+      club_id: clubId,
+      pack_id: packId,
+      product_id: item.productId,
+      qty: Math.round(item.qty * 100) / 100,
+      unit: item.unit,
+      sort_order: index,
+    })),
+  );
+  if (insErr) return insErr.message;
+  return null;
 }
 
 function baseRowFromInput(
@@ -301,10 +367,23 @@ export async function createProductAction(
         ...baseRowFromInput(input, sku, isCannabis),
       });
       if (retry.error) return { error: retry.error.message };
-      return { id };
+    } else {
+      return { error: error.message };
     }
-    return { error: error.message };
   }
+
+  if (input.isPack && input.packItems?.length) {
+    const packErr = await syncPackItems(
+      auth.supabase,
+      auth.clubId,
+      id,
+      input.packItems,
+    );
+    if (packErr && !isMissingPackTableError(packErr)) {
+      return { error: packErr };
+    }
+  }
+
   return { id };
 }
 
@@ -312,7 +391,7 @@ export async function updateProductAction(
   productId: string,
   input: ProductInput,
 ): Promise<ProductActionResult> {
-  const validation = validateProductInput(input);
+  const validation = validateProductInput(input, productId);
   if (validation) return { error: validation };
 
   const auth = await staffClubId();
@@ -355,6 +434,21 @@ export async function updateProductAction(
 
   if (error) return { error: error.message };
   if (!data) return { error: "No se encontró el producto." };
+
+  if (input.isPack) {
+    const packErr = await syncPackItems(
+      auth.supabase,
+      auth.clubId,
+      productId,
+      input.packItems ?? [],
+    );
+    if (packErr && !isMissingPackTableError(packErr)) {
+      return { error: packErr };
+    }
+  } else {
+    await syncPackItems(auth.supabase, auth.clubId, productId, []);
+  }
+
   return { id: productId };
 }
 

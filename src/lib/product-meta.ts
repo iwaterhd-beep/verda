@@ -1,4 +1,4 @@
-import type { ProductCategory } from "@/types";
+import type { ProductCategory, ProductUnit } from "@/types";
 import {
   DEFAULT_PRODUCT_CATEGORIES,
   getCategoryDisplay,
@@ -61,6 +61,15 @@ export const unitOptions: {
   },
 ];
 
-export function unitMeta(unit: "g" | "ud") {
+export const packUnitMeta = {
+  value: "pack" as const,
+  label: "Pack",
+  priceLabel: "Precio del pack (Crd)",
+  stockLabel: "Packs disponibles",
+  stockStep: "1",
+};
+
+export function unitMeta(unit: ProductUnit) {
+  if (unit === "pack") return packUnitMeta;
   return unitOptions.find((o) => o.value === unit) ?? unitOptions[0];
 }

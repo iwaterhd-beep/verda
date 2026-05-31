@@ -1,12 +1,11 @@
 "use client";
 
 import { create } from "zustand";
+import { cartItemGrams, gramsPerPack } from "@/lib/product-packs";
 import type { CartItem, Product } from "@/types";
 
 function gramsOf(items: CartItem[]) {
-  return items
-    .filter((i) => i.unit === "g")
-    .reduce((a, i) => a + i.qty, 0);
+  return items.reduce((a, i) => a + cartItemGrams(i), 0);
 }
 
 interface CartState {
@@ -32,13 +31,16 @@ export const useCart = create<CartState>((set, get) => ({
           ),
         };
       }
+      const packItems = product.isPack ? product.packItems : undefined;
       const item: CartItem = {
         productId: product.id,
         name: product.name,
         category: product.category,
-        unit: product.unit,
+        unit: product.isPack ? "pack" : product.unit,
         pricePerUnit: product.pricePerUnit,
         qty: 1,
+        packItems,
+        gramsPerPack: product.isPack ? gramsPerPack(packItems) : undefined,
       };
       return { items: [...s.items, item] };
     }),
@@ -59,3 +61,20 @@ export const useCart = create<CartState>((set, get) => ({
   total: () => get().items.reduce((a, i) => a + i.qty * i.pricePerUnit, 0),
   grams: () => gramsOf(get().items),
 }));
+
+export function productFromCartItem(item: CartItem): Product {
+  return {
+    id: item.productId,
+    name: item.name,
+    category: item.category,
+    sku: "",
+    stock: 999,
+    unit: item.unit,
+    lowStockThreshold: 0,
+    pricePerUnit: item.pricePerUnit,
+    batch: "",
+    expiresAt: null,
+    isPack: item.unit === "pack",
+    packItems: item.packItems,
+  };
+}

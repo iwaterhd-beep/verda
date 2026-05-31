@@ -91,9 +91,7 @@ export default function OrdersPage() {
         <div className="space-y-3">
           {orders.map((o) => {
             const s = statusMeta[o.status];
-            const orderedGrams = o.items
-              .filter((i) => i.unit === "g")
-              .reduce((a, i) => a + i.qty, 0);
+            const orderedGrams = Number(o.grams ?? 0);
             return (
               <Card
                 key={o.id}
@@ -149,7 +147,9 @@ export default function OrdersPage() {
                                     {margin! > 0 ? "+" : ""}
                                     {i.unit === "g"
                                       ? `${margin!.toFixed(2)}g`
-                                      : `${margin} ud`}
+                                      : i.unit === "pack"
+                                        ? `${margin} pack${Math.abs(margin!) === 1 ? "" : "s"}`
+                                        : `${margin} ud`}
                                   </span>
                                 )}
                               </>

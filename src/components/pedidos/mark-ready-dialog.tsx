@@ -18,15 +18,18 @@ import { markOrderReadyAction } from "@/app/(dashboard)/pedidos/actions";
 import { cn } from "@/lib/utils";
 import type { ClubOrder } from "@/types";
 
-function fmtQty(qty: number, unit: string) {
-  const n = Number(qty);
-  return unit === "g" ? `${n.toFixed(2)}g` : `${n} ud`;
-}
+import { fmtLineQty } from "@/lib/product-packs";
 
 function marginText(ordered: number, actual: number, unit: string) {
   const diff = Math.round((actual - ordered) * 100) / 100;
   if (diff === 0) return { label: "0", className: "text-muted-foreground" };
   const sign = diff > 0 ? "+" : "";
+  if (unit === "pack") {
+    return {
+      label: `${sign}${diff} pack${Math.abs(diff) === 1 ? "" : "s"}`,
+      className: diff > 0 ? "text-amber-500" : "text-sky-400",
+    };
+  }
   return {
     label: `${sign}${unit === "g" ? diff.toFixed(2) : diff}${unit === "g" ? "g" : " ud"}`,
     className: diff > 0 ? "text-amber-500" : "text-sky-400",
@@ -135,7 +138,7 @@ export function MarkReadyDialog({
                     <p className="text-xs text-muted-foreground">{item.unit}</p>
                   </div>
                   <span className="w-16 text-right text-sm tabular-nums text-muted-foreground">
-                    {fmtQty(ordered, item.unit)}
+                    {fmtLineQty(ordered, item.unit)}
                   </span>
                   <div className="w-24">
                     <Label htmlFor={`actual-${item.id}`} className="sr-only">

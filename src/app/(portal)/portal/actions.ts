@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
+import { cartItemGrams } from "@/lib/product-packs";
 import type { CartItem, Order } from "@/types";
 
 export interface PlaceOrderResult {
@@ -13,9 +14,7 @@ function orderCode() {
 }
 
 function gramsOf(items: CartItem[]) {
-  return items
-    .filter((i) => i.unit === "g")
-    .reduce((a, i) => a + i.qty, 0);
+  return items.reduce((a, i) => a + cartItemGrams(i), 0);
 }
 
 export async function placeOrderAction(
@@ -87,6 +86,8 @@ export async function placeOrderAction(
       unit: i.unit,
       price_per_unit: i.pricePerUnit,
       qty: i.qty,
+      pack_items: i.packItems?.length ? i.packItems : null,
+      grams_per_pack: i.gramsPerPack ?? null,
     })),
   );
   if (itemsErr) {

@@ -57,17 +57,28 @@ export interface ProductCategory {
   isCannabis: boolean;
 }
 
+export interface PackItem {
+  productId: string;
+  productName?: string;
+  qty: number;
+  unit: "g" | "ud";
+}
+
+export type ProductUnit = "g" | "ud" | "pack";
+
 export interface Product {
   id: string;
   name: string;
   category: string;
   sku: string;
   stock: number;
-  unit: "g" | "ud";
+  unit: ProductUnit;
   lowStockThreshold: number;
   pricePerUnit: number;
   batch: string;
   expiresAt: string | null;
+  isPack?: boolean;
+  packItems?: PackItem[];
   photos?: string[];
   videoUrls?: string[];
   /** @deprecated Usa videoUrls */
@@ -131,9 +142,11 @@ export interface CartItem {
   productId: string;
   name: string;
   category: string;
-  unit: Product["unit"];
+  unit: ProductUnit;
   pricePerUnit: number;
   qty: number;
+  packItems?: PackItem[];
+  gramsPerPack?: number;
 }
 
 /** Línea de pedido persistida (incluye peso real servido). */

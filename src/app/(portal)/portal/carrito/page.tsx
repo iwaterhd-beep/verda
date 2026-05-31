@@ -19,7 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCart } from "@/store/use-cart";
+import { useCart, productFromCartItem } from "@/store/use-cart";
+import { formatPackContents } from "@/lib/product-packs";
 import { currentMember } from "@/lib/current-member";
 import { fetchMyMember } from "@/lib/data/members";
 import { placeOrderAction } from "@/app/(portal)/portal/actions";
@@ -128,8 +129,15 @@ export default function CartPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{i.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {formatCurrency(i.pricePerUnit)}/{i.unit}
+                    {i.unit === "pack"
+                      ? formatCurrency(i.pricePerUnit)
+                      : `${formatCurrency(i.pricePerUnit)}/${i.unit}`}
                   </p>
+                  {i.unit === "pack" && i.packItems?.length ? (
+                    <p className="text-xs text-muted-foreground">
+                      {formatPackContents(i.packItems)}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Button
@@ -146,20 +154,7 @@ export default function CartPage() {
                   <Button
                     size="icon"
                     className="h-8 w-8"
-                    onClick={() =>
-                      add({
-                        id: i.productId,
-                        name: i.name,
-                        category: i.category,
-                        unit: i.unit,
-                        pricePerUnit: i.pricePerUnit,
-                        sku: "",
-                        stock: 999,
-                        lowStockThreshold: 0,
-                        batch: "",
-                        expiresAt: null,
-                      })
-                    }
+                    onClick={() => add(productFromCartItem(i))}
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </Button>

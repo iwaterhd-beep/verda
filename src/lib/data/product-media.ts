@@ -3,7 +3,11 @@
 import { createClient } from "@/lib/supabase/client";
 import { compressVideoFile, formatBytes } from "@/lib/compress-video";
 import type { CompressVideoProgress } from "@/lib/compress-video";
-import { MAX_PRODUCT_VIDEOS } from "@/lib/product-media-limits";
+import {
+  MAX_PRODUCT_VIDEOS,
+  MAX_VIDEO_BYTES,
+  MAX_VIDEO_MB,
+} from "@/lib/product-media-limits";
 import { storagePathFromPublicUrl } from "@/lib/product-media-storage";
 import type { Product } from "@/types";
 
@@ -58,11 +62,18 @@ export async function uploadProductVideoClient(
   try {
     uploadFile = await compressVideoFile(file, onProgress);
   } catch (err) {
+    const detail =
+      err instanceof Error ? err.message : "Error desconocido al comprimir.";
+    if (file.size <= MAX_VIDEO_BYTES) {
+      uploadFile = file;
+    } else {
+      return { error: detail };
+    }
+  }
+
+  if (uploadFile.size > MAX_VIDEO_BYTES) {
     return {
-      error:
-        err instanceof Error
-          ? err.message
-          : "No se pudo comprimir el vídeo. Prueba con un clip más corto.",
+      error: `Tras comprimir sigue pesando ${formatBytes(uploadFile.size)} (máx. ${MAX_VIDEO_MB} MB). Prueba un vídeo más corto.`,
     };
   }
 

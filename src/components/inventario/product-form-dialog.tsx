@@ -42,6 +42,11 @@ import {
 import { ProductStrainFields } from "@/components/inventario/product-strain-fields";
 import { isCannabisProduct } from "@/lib/product-strain";
 import { productCategoriesFromList, unitMeta, unitOptions } from "@/lib/product-meta";
+import {
+  ProductPackFields,
+  packItemsFromProduct,
+  type PackItemDraft,
+} from "@/components/inventario/product-pack-fields";
 import { fetchClubCategories } from "@/lib/data/product-categories";
 import type { ProductGenetics, ProductOrigin } from "@/lib/product-strain";
 import type { Product } from "@/types";
@@ -74,7 +79,11 @@ export function ProductFormDialog({
     product?.category ?? "FLOR",
   );
   const [unit, setUnit] = React.useState<Product["unit"]>(product?.unit ?? "g");
-  const unitInfo = unitMeta(unit);
+  const [isPack, setIsPack] = React.useState(product?.isPack ?? false);
+  const [packItems, setPackItems] = React.useState<PackItemDraft[]>(() =>
+    packItemsFromProduct(product),
+  );
+  const unitInfo = unitMeta(isPack ? "pack" : unit);
   const [genetics, setGenetics] = React.useState<ProductGenetics | "">(
     product?.genetics ?? "",
   );
@@ -101,7 +110,9 @@ export function ProductFormDialog({
     if (!open) return;
     setName(product?.name ?? "");
     setCategory(product?.category ?? "FLOR");
-    setUnit(product?.unit ?? "g");
+    setUnit(product?.unit === "pack" ? "g" : (product?.unit ?? "g"));
+    setIsPack(product?.isPack ?? false);
+    setPackItems(packItemsFromProduct(product));
     setGenetics(product?.genetics ?? "");
     setOrigin(product?.origin ?? "");
     setPhotos(product?.photos ?? []);
@@ -186,6 +197,10 @@ export function ProductFormDialog({
       toast.error("Indica un precio válido");
       return;
     }
+    if (isPack && packItems.length === 0) {
+      toast.error("Añade al menos un producto al pack");
+      return;
+    }
     if (!Number.isFinite(lowStockThreshold) || lowStockThreshold < 0) {
       toast.error("Indica un umbral de stock bajo válido");
       return;
@@ -210,7 +225,9 @@ export function ProductFormDialog({
       category,
       sku: String(formData.get("sku") || ""),
       stock,
-      unit,
+      unit: isPack ? "pack" as const : unit,
+      isPack,
+      packItems: isPack ? packItems : undefined,
       lowStockThreshold,
       pricePerUnit,
       batch: String(formData.get("batch") || ""),
@@ -340,6 +357,33 @@ export function ProductFormDialog({
             />
           </div>
 
+          <div className="flex items-center justify-between rounded-xl border border-border/60 bg-secondary/20 px-3 py-2.5">
+            <div>
+              <Label htmlFor="isPack" className="cursor-pointer">
+                Es un pack
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Precio fijo con cantidades concretas (ej. 50g a 250 Crd).
+              </p>
+            </div>
+            <input
+              id="isPack"
+              type="checkbox"
+              className="h-4 w-4 accent-primary"
+              checked={isPack}
+              onChange={(e) => setIsPack(e.target.checked)}
+            />
+          </div>
+
+          {isPack && (
+            <ProductPackFields
+              items={packItems}
+              onChange={setPackItems}
+              excludeProductId={product?.id}
+              enabled={open}
+            />
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-2">
               <Label>Categoría</Label>
@@ -359,24 +403,26 @@ export function ProductFormDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label>Venta por</Label>
-              <Select
-                value={unit}
-                onValueChange={(v) => setUnit(v as Product["unit"])}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Gramos o unidades" />
-                </SelectTrigger>
-                <SelectContent>
-                  {unitOptions.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>
-                      {o.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!isPack && (
+              <div className="grid gap-2">
+                <Label>Venta por</Label>
+                <Select
+                  value={unit}
+                  onValueChange={(v) => setUnit(v as "g" | "ud")}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Gramos o unidades" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unitOptions.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -448,7 +494,7 @@ export function ProductFormDialog({
             </div>
           </div>
 
-          {isCannabisProduct(category, categories) && (
+          {!isPack && isCannabisProduct(category, categories) && (
             <ProductStrainFields
               product={product}
               genetics={genetics}

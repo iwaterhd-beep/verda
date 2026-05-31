@@ -170,7 +170,14 @@ export function InventarioClient() {
                               )}
                             </div>
                             <div>
-                              <p className="font-medium">{p.name}</p>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">{p.name}</p>
+                                {p.isPack && (
+                                  <Badge variant="outline" className="h-5 text-[10px]">
+                                    Pack
+                                  </Badge>
+                                )}
+                              </div>
                               <p className="font-mono text-xs text-muted-foreground">
                                 {p.sku}
                               </p>
@@ -184,7 +191,11 @@ export function InventarioClient() {
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
                           <Badge variant="secondary" className="font-normal">
-                            {p.unit === "g" ? "Gramos" : "Unidades"}
+                            {p.isPack
+                              ? "Pack"
+                              : p.unit === "g"
+                                ? "Gramos"
+                                : "Unidades"}
                           </Badge>
                         </TableCell>
                         <TableCell className="hidden font-mono text-xs text-muted-foreground md:table-cell">
@@ -199,8 +210,9 @@ export function InventarioClient() {
                                   : "font-medium"
                               }
                             >
-                              {p.unit === "g" ? p.stock.toFixed(2) : p.stock}{" "}
-                              {p.unit}
+                              {p.isPack
+                                ? `${p.stock} packs`
+                                : `${p.unit === "g" ? p.stock.toFixed(2) : p.stock} ${p.unit}`}
                             </span>
                             {low && (
                               <Badge variant="warning" className="h-5">
@@ -213,7 +225,9 @@ export function InventarioClient() {
                           {p.expiresAt ? formatDate(p.expiresAt) : "—"}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {formatCurrency(p.pricePerUnit)}/{p.unit}
+                          {p.isPack
+                            ? formatCurrency(p.pricePerUnit)
+                            : `${formatCurrency(p.pricePerUnit)}/${p.unit}`}
                         </TableCell>
                         <TableCell className="pr-6 text-right">
                           <div className="flex justify-end gap-1">

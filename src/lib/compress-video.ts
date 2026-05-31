@@ -4,31 +4,144 @@ import { FFmpeg } from "@ffmpeg/ffmpeg";
 import { fetchFile, toBlobURL } from "@ffmpeg/util";
 
 const FFMPEG_CORE_VERSION = "0.12.10";
-const FFMPEG_CDN = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${FFMPEG_CORE_VERSION}/dist/esm`;
+const FFMPEG_CDN = `https://cdn.jsdelivr.net/npm/@ffmpeg/core@${FFMPEG_CORE_VERSION}/dist/umd`;
 
 export type CompressVideoProgress = {
   stage: "loading" | "compressing";
   percent: number;
 };
 
+type EncodeProfile = {
+  id: string;
+  buildArgs: (input: string, output: string, maxWidth: string) => string[];
+};
+
+const SIZE_PASSES = [
+  { maxWidth: "1280", maxBytes: 80 * 1024 * 1024 },
+  { maxWidth: "960", maxBytes: 50 * 1024 * 1024 },
+  { maxWidth: "720", maxBytes: 35 * 1024 * 1024 },
+  { maxWidth: "640", maxBytes: 25 * 1024 * 1024 },
+];
+
+const ENCODE_PROFILES: EncodeProfile[] = [
+  {
+    id: "auto-audio",
+    buildArgs: (input, output, maxWidth) => [
+      "-i",
+      input,
+      "-vf",
+      `scale='min(${maxWidth},iw)':-2`,
+      "-pix_fmt",
+      "yuv420p",
+      "-movflags",
+      "+faststart",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "96k",
+      "-ac",
+      "2",
+      output,
+    ],
+  },
+  {
+    id: "auto-silent",
+    buildArgs: (input, output, maxWidth) => [
+      "-i",
+      input,
+      "-vf",
+      `scale='min(${maxWidth},iw)':-2`,
+      "-pix_fmt",
+      "yuv420p",
+      "-movflags",
+      "+faststart",
+      "-an",
+      output,
+    ],
+  },
+  {
+    id: "mpeg4",
+    buildArgs: (input, output, maxWidth) => [
+      "-i",
+      input,
+      "-vf",
+      `scale='min(${maxWidth},iw)':-2`,
+      "-c:v",
+      "mpeg4",
+      "-q:v",
+      "4",
+      "-pix_fmt",
+      "yuv420p",
+      "-movflags",
+      "+faststart",
+      "-an",
+      output,
+    ],
+  },
+  {
+    id: "h264",
+    buildArgs: (input, output, maxWidth) => [
+      "-i",
+      input,
+      "-vf",
+      `scale='min(${maxWidth},iw)':-2`,
+      "-c:v",
+      "libx264",
+      "-crf",
+      "28",
+      "-preset",
+      "veryfast",
+      "-pix_fmt",
+      "yuv420p",
+      "-movflags",
+      "+faststart",
+      "-an",
+      output,
+    ],
+  },
+  {
+    id: "simple",
+    buildArgs: (input, output) => ["-i", input, output],
+  },
+];
+
 let ffmpegInstance: FFmpeg | null = null;
 let ffmpegLoadPromise: Promise<FFmpeg> | null = null;
 
+function inputFileName(file: File) {
+  const fromName = file.name.split(".").pop()?.toLowerCase();
+  const fromMime = file.type.split("/")[1]?.split(";")[0]?.toLowerCase();
+  const ext =
+    fromName && /^[a-z0-9]{2,5}$/.test(fromName)
+      ? fromName
+      : fromMime && /^[a-z0-9]{2,5}$/.test(fromMime)
+        ? fromMime
+        : "mp4";
+  return `input.${ext}`;
+}
+
 async function getFFmpeg() {
-  if (ffmpegInstance) return ffmpegInstance;
+  if (ffmpegInstance?.loaded) return ffmpegInstance;
   if (!ffmpegLoadPromise) {
     ffmpegLoadPromise = (async () => {
       const ffmpeg = new FFmpeg();
-      await ffmpeg.load({
-        coreURL: await toBlobURL(
-          `${FFMPEG_CDN}/ffmpeg-core.js`,
-          "text/javascript",
-        ),
-        wasmURL: await toBlobURL(
-          `${FFMPEG_CDN}/ffmpeg-core.wasm`,
-          "application/wasm",
-        ),
-      });
+      try {
+        await ffmpeg.load({
+          coreURL: await toBlobURL(
+            `${FFMPEG_CDN}/ffmpeg-core.js`,
+            "text/javascript",
+          ),
+          wasmURL: await toBlobURL(
+            `${FFMPEG_CDN}/ffmpeg-core.wasm`,
+            "application/wasm",
+          ),
+        });
+      } catch {
+        ffmpegLoadPromise = null;
+        throw new Error(
+          "No se pudo cargar el compresor. Revisa tu conexión e inténtalo otra vez.",
+        );
+      }
       ffmpegInstance = ffmpeg;
       return ffmpeg;
     })();
@@ -36,18 +149,43 @@ async function getFFmpeg() {
   return ffmpegLoadPromise;
 }
 
-function outputNameForAttempt(attempt: number) {
-  return attempt === 0 ? "output.mp4" : `output-${attempt}.mp4`;
+async function prepareInput(
+  ffmpeg: FFmpeg,
+  file: File,
+): Promise<{ inputPath: string; cleanup: () => Promise<void> }> {
+  const mountPoint = "/media";
+  try {
+    await ffmpeg.mount(
+      "WORKERFS" as Parameters<FFmpeg["mount"]>[0],
+      { files: [file] },
+      mountPoint,
+    );
+    return {
+      inputPath: `${mountPoint}/${file.name}`,
+      cleanup: async () => {
+        await ffmpeg.unmount(mountPoint).catch(() => null);
+      },
+    };
+  } catch {
+    const inputPath = inputFileName(file);
+    await ffmpeg.writeFile(inputPath, await fetchFile(file));
+    return {
+      inputPath,
+      cleanup: async () => {
+        await ffmpeg.deleteFile(inputPath).catch(() => null);
+      },
+    };
+  }
 }
 
-async function runCompressPass(
+async function tryEncode(
   ffmpeg: FFmpeg,
-  inputName: string,
+  file: File,
   outputName: string,
-  crf: string,
+  profile: EncodeProfile,
   maxWidth: string,
   onProgress?: (progress: CompressVideoProgress) => void,
-) {
+): Promise<File | null> {
   const progressHandler = ({ progress }: { progress: number }) => {
     onProgress?.({
       stage: "compressing",
@@ -56,28 +194,32 @@ async function runCompressPass(
   };
 
   ffmpeg.on("progress", progressHandler);
+
+  const { inputPath, cleanup } = await prepareInput(ffmpeg, file);
+
   try {
-    await ffmpeg.exec([
-      "-i",
-      inputName,
-      "-vf",
-      `scale='min(${maxWidth},iw)':-2`,
-      "-c:v",
-      "libx264",
-      "-crf",
-      crf,
-      "-preset",
-      "fast",
-      "-movflags",
-      "+faststart",
-      "-c:a",
-      "aac",
-      "-b:a",
-      "96k",
-      outputName,
-    ]);
+    const code = await ffmpeg.exec(
+      profile.buildArgs(inputPath, outputName, maxWidth),
+    );
+    if (code !== 0) {
+      return null;
+    }
+
+    const data = await ffmpeg.readFile(outputName);
+    const bytes = data instanceof Uint8Array ? data : new TextEncoder().encode(String(data));
+    if (!bytes.byteLength) return null;
+
+    const copy = new Uint8Array(bytes.byteLength);
+    copy.set(bytes);
+    const blob = new Blob([copy], { type: "video/mp4" });
+    const baseName = file.name.replace(/\.[^.]+$/, "") || "video";
+    return new File([blob], `${baseName}.mp4`, { type: "video/mp4" });
+  } catch {
+    return null;
   } finally {
     ffmpeg.off("progress", progressHandler);
+    await ffmpeg.deleteFile(outputName).catch(() => null);
+    await cleanup();
   }
 }
 
@@ -89,51 +231,43 @@ export async function compressVideoFile(
   const ffmpeg = await getFFmpeg();
   onProgress?.({ stage: "loading", percent: 100 });
 
-  const ext = file.name.split(".").pop()?.toLowerCase() || "mp4";
-  const inputName = `input.${ext.replace(/[^a-z0-9]/gi, "") || "mp4"}`;
+  let best: File | null = null;
 
-  await ffmpeg.writeFile(inputName, await fetchFile(file));
+  for (const sizePass of SIZE_PASSES) {
+    for (const profile of ENCODE_PROFILES) {
+      const outputName = `output-${profile.id}-${sizePass.maxWidth}.mp4`;
+      const result = await tryEncode(
+        ffmpeg,
+        file,
+        outputName,
+        profile,
+        sizePass.maxWidth,
+        onProgress,
+      );
 
-  const passes: { crf: string; maxWidth: string; maxBytes: number }[] = [
-    { crf: "28", maxWidth: "1280", maxBytes: 80 * 1024 * 1024 },
-    { crf: "32", maxWidth: "960", maxBytes: 50 * 1024 * 1024 },
-    { crf: "35", maxWidth: "720", maxBytes: 35 * 1024 * 1024 },
-  ];
+      if (!result || result.size === 0) continue;
 
-  let compressed: File | null = null;
-
-  for (let i = 0; i < passes.length; i++) {
-    const pass = passes[i];
-    const outputName = outputNameForAttempt(i);
-    await runCompressPass(
-      ffmpeg,
-      inputName,
-      outputName,
-      pass.crf,
-      pass.maxWidth,
-      onProgress,
-    );
-
-    const data = await ffmpeg.readFile(outputName);
-    await ffmpeg.deleteFile(outputName).catch(() => null);
-
-    const blob = new Blob([data as BlobPart], { type: "video/mp4" });
-    const baseName = file.name.replace(/\.[^.]+$/, "") || "video";
-    compressed = new File([blob], `${baseName}.mp4`, { type: "video/mp4" });
-
-    if (compressed.size <= pass.maxBytes || i === passes.length - 1) {
-      break;
+      best = result;
+      if (result.size <= sizePass.maxBytes) {
+        onProgress?.({ stage: "compressing", percent: 100 });
+        return result;
+      }
     }
   }
 
-  await ffmpeg.deleteFile(inputName).catch(() => null);
-
-  if (!compressed || compressed.size === 0) {
-    throw new Error("La compresión no produjo un vídeo válido.");
+  if (best && best.size < file.size) {
+    onProgress?.({ stage: "compressing", percent: 100 });
+    return best;
   }
 
-  onProgress?.({ stage: "compressing", percent: 100 });
-  return compressed;
+  if (best) {
+    onProgress?.({ stage: "compressing", percent: 100 });
+    return best;
+  }
+
+  throw new Error(
+    "No se pudo comprimir el vídeo. Prueba con MP4/MOV o un clip más corto.",
+  );
 }
 
 export function formatBytes(bytes: number) {

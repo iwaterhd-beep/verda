@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import type { CartItem, ClubOrder, Order, OrderLineItem, OrderStatus } from "@/types";
+import type { CartItem, ClubOrder, Order, OrderLineItem, OrderStatus, PackItem } from "@/types";
 
 type ItemRow = {
   id: string;
@@ -12,6 +12,8 @@ type ItemRow = {
   price_per_unit: number;
   qty: number;
   actual_qty: number | null;
+  pack_items?: PackItem[] | null;
+  grams_per_pack?: number | null;
 };
 
 type OrderRow = {
@@ -37,6 +39,9 @@ function toLineItem(i: ItemRow): OrderLineItem {
     pricePerUnit: Number(i.price_per_unit),
     qty: Number(i.qty),
     actualQty: i.actual_qty != null ? Number(i.actual_qty) : null,
+    packItems: i.pack_items ?? undefined,
+    gramsPerPack:
+      i.grams_per_pack != null ? Number(i.grams_per_pack) : undefined,
   };
 }
 
@@ -54,7 +59,7 @@ function toOrder(r: OrderRow): Order {
 }
 
 const itemFields =
-  "id, product_id, name, category, unit, price_per_unit, qty, actual_qty";
+  "id, product_id, name, category, unit, price_per_unit, qty, actual_qty, pack_items, grams_per_pack";
 
 export async function fetchMyOrders(): Promise<Order[]> {
   const supabase = createClient();
@@ -113,6 +118,4 @@ export async function updateOrderStatus(id: string, status: OrderStatus) {
   if (error) throw error;
 }
 
-export function fmtLineQty(qty: number, unit: string) {
-  return unit === "g" ? `${Number(qty).toFixed(2)}g` : `${qty} ud`;
-}
+export { fmtLineQty } from "@/lib/product-packs";

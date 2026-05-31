@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { defaultCatalog } from "@/lib/catalog";
+import type { PackItem } from "@/types";
 
 export interface ReadyLineInput {
   itemId: string;
@@ -36,6 +37,90 @@ async function ensureClubProducts(clubId: string, admin: ReturnType<typeof creat
       batch: p.batch === "—" ? null : p.batch,
       expires_at: p.expiresAt,
     })),
+  );
+}
+
+type OrderItemRow = {
+  id?: string;
+  product_id: string;
+  unit: string;
+  qty?: number;
+  actual_qty?: number | null;
+  pack_items?: PackItem[] | null;
+  grams_per_pack?: number | null;
+};
+
+async function adjustProductStock(
+  admin: ReturnType<typeof createAdminClient>,
+  clubId: string,
+  productId: string,
+  delta: number,
+  unitLabel: string,
+): Promise<string | null> {
+  const { data: product, error: prodErr } = await admin
+    .from("products")
+    .select("stock, name")
+    .eq("club_id", clubId)
+    .eq("id", productId)
+    .single();
+  if (prodErr || !product) {
+    return `Producto ${productId} no encontrado en inventario.`;
+  }
+
+  const stock = Number(product.stock);
+  const next = Math.round((stock + delta) * 100) / 100;
+  if (delta < 0 && next < 0) {
+    return `Stock insuficiente para ${product.name ?? productId}. Disponible: ${stock}${unitLabel}.`;
+  }
+
+  const { error: stockErr } = await admin
+    .from("products")
+    .update({ stock: next })
+    .eq("club_id", clubId)
+    .eq("id", productId);
+  if (stockErr) return stockErr.message;
+  return null;
+}
+
+async function applyLineStockChange(
+  admin: ReturnType<typeof createAdminClient>,
+  clubId: string,
+  item: OrderItemRow,
+  actualQty: number,
+  direction: "deduct" | "restore",
+): Promise<string | null> {
+  const sign = direction === "deduct" ? -1 : 1;
+
+  if (item.unit === "pack") {
+    const packErr = await adjustProductStock(
+      admin,
+      clubId,
+      item.product_id,
+      sign * actualQty,
+      " pack",
+    );
+    if (packErr) return packErr;
+
+    for (const comp of item.pack_items ?? []) {
+      const amount = Math.round(comp.qty * actualQty * 100) / 100;
+      const compErr = await adjustProductStock(
+        admin,
+        clubId,
+        comp.productId,
+        sign * amount,
+        comp.unit,
+      );
+      if (compErr) return compErr;
+    }
+    return null;
+  }
+
+  return adjustProductStock(
+    admin,
+    clubId,
+    item.product_id,
+    sign * actualQty,
+    item.unit,
   );
 }
 
@@ -75,11 +160,11 @@ export async function markOrderReadyAction(
 
   const { data: items, error: itemsErr } = await admin
     .from("order_items")
-    .select("id, product_id, unit, qty")
+    .select("id, product_id, unit, qty, pack_items, grams_per_pack")
     .eq("order_id", orderId);
   if (itemsErr || !items?.length) return { error: "Líneas del pedido no encontradas." };
 
-  const byId = new Map(items.map((i) => [i.id, i]));
+  const byId = new Map((items as OrderItemRow[]).map((i) => [i.id, i]));
   for (const line of lines) {
     if (!byId.has(line.itemId)) return { error: "Línea de pedido no válida." };
     if (!(line.actualQty > 0)) {
@@ -101,32 +186,21 @@ export async function markOrderReadyAction(
       .eq("id", line.itemId);
     if (updErr) return { error: updErr.message };
 
-    const { data: product, error: prodErr } = await admin
-      .from("products")
-      .select("stock")
-      .eq("club_id", clubId)
-      .eq("id", item.product_id)
-      .single();
-    if (prodErr || !product) {
-      return { error: `Producto ${item.product_id} no encontrado en inventario.` };
+    const stockErr = await applyLineStockChange(
+      admin,
+      clubId,
+      item,
+      actual,
+      "deduct",
+    );
+    if (stockErr) return { error: stockErr };
+
+    if (item.unit === "g") {
+      gramsServed += actual;
+    } else if (item.unit === "pack") {
+      gramsServed +=
+        Number(item.grams_per_pack ?? 0) * actual;
     }
-
-    const stock = Number(product.stock);
-    if (actual > stock) {
-      return {
-        error: `Stock insuficiente para ${item.product_id}. Disponible: ${stock}${item.unit}.`,
-      };
-    }
-
-    const newStock = Math.round((stock - actual) * 100) / 100;
-    const { error: stockErr } = await admin
-      .from("products")
-      .update({ stock: newStock })
-      .eq("club_id", clubId)
-      .eq("id", item.product_id);
-    if (stockErr) return { error: stockErr.message };
-
-    if (item.unit === "g") gramsServed += actual;
   }
 
   const { error: statusErr } = await admin
@@ -226,26 +300,20 @@ export async function cancelOrderAction(
   if (order.status === "READY") {
     const { data: items } = await admin
       .from("order_items")
-      .select("product_id, actual_qty")
+      .select("product_id, unit, actual_qty, pack_items")
       .eq("order_id", orderId);
 
-    for (const item of items ?? []) {
+    for (const item of (items ?? []) as OrderItemRow[]) {
       if (item.actual_qty == null) continue;
       const qty = Number(item.actual_qty);
-      const { data: product } = await admin
-        .from("products")
-        .select("stock")
-        .eq("club_id", clubId)
-        .eq("id", item.product_id)
-        .single();
-      if (product) {
-        const restored = Math.round((Number(product.stock) + qty) * 100) / 100;
-        await admin
-          .from("products")
-          .update({ stock: restored })
-          .eq("club_id", clubId)
-          .eq("id", item.product_id);
-      }
+      const restoreErr = await applyLineStockChange(
+        admin,
+        clubId,
+        item,
+        qty,
+        "restore",
+      );
+      if (restoreErr) return { error: restoreErr };
     }
   }
 

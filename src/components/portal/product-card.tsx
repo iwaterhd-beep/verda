@@ -16,6 +16,7 @@ import {
   originLabel,
 } from "@/lib/product-strain";
 import { formatCurrency } from "@/lib/utils";
+import { formatPackContents } from "@/lib/product-packs";
 import { ProductMediaGallery } from "@/components/portal/product-media-gallery";
 import type { Product } from "@/types";
 
@@ -32,7 +33,8 @@ export function ProductCard({ product }: { product: Product }) {
   const decrement = useCart((s) => s.decrement);
   const soldOut = product.stock <= 0;
   const hasMedia = productHasMedia(product);
-  const showStrain = isCannabisProduct(product.category, categories);
+  const showStrain = !product.isPack && isCannabisProduct(product.category, categories);
+  const packContents = product.isPack ? formatPackContents(product.packItems) : "";
   const thc = formatThcPercent(product.thcPercent);
   const genetics = geneticsLabel(product.genetics);
   const origin = originLabel(product.origin);
@@ -50,10 +52,22 @@ export function ProductCard({ product }: { product: Product }) {
           </span>
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate font-medium">{product.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="truncate font-medium">{product.name}</p>
+            {product.isPack && (
+              <Badge variant="secondary" className="h-5 shrink-0 text-[10px]">
+                Pack
+              </Badge>
+            )}
+          </div>
           <p className="text-sm text-muted-foreground">
-            {formatCurrency(product.pricePerUnit)}/{product.unit}
+            {product.isPack
+              ? formatCurrency(product.pricePerUnit)
+              : `${formatCurrency(product.pricePerUnit)}/${product.unit}`}
           </p>
+          {product.isPack && packContents && (
+            <p className="mt-1 text-xs text-muted-foreground">{packContents}</p>
+          )}
           {showStrain && (thc || genetics || origin) && (
             <div className="mt-1.5 flex flex-wrap gap-1">
               {thc && (
