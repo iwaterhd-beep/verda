@@ -35,9 +35,7 @@ export function FarmGeneticCard({
 }: FarmGeneticCardProps) {
   const [detailOpen, setDetailOpen] = React.useState(false);
   const preview = geneticToProductPreview(genetic, product, farm);
-  const hasMedia =
-    catalogEntryHasMedia(genetic, farm) ||
-    Boolean(product && product.photos?.length);
+  const hasMedia = catalogEntryHasMedia(genetic, farm, product);
   const soldOut = (genetic.stock ?? 0) <= 0 || !product;
   const cartProductId = product?.id;
 
@@ -171,7 +169,7 @@ export function FarmGeneticCard({
       </div>
 
       <ProductDetailSheet
-        product={product ?? preview}
+        product={preview}
         open={detailOpen}
         onOpenChange={setDetailOpen}
       />

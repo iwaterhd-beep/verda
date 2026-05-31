@@ -5,7 +5,7 @@ import {
   listPortalJarsAction,
   listPortalJarItemsAction,
 } from "@/app/(dashboard)/inventario/jar-actions";
-import { resolveCatalogMedia } from "@/lib/catalog-media";
+import { resolveProductMedia } from "@/lib/catalog-media";
 import type { JarItem, Product, ProductJar } from "@/types";
 
 type JarRow = {
@@ -147,7 +147,7 @@ export function jarItemToProductPreview(
   product?: Product | null,
   jar?: ProductJar | null,
 ): Product {
-  const { photos, videoUrls } = resolveCatalogMedia(item, jar);
+  const { photos, videoUrls } = resolveProductMedia(product, item, jar);
   return {
     id: product?.id ?? item.id,
     name: item.name,
@@ -160,8 +160,8 @@ export function jarItemToProductPreview(
     compareAtPrice: item.compareAtPrice,
     batch: product?.batch ?? "—",
     expiresAt: product?.expiresAt ?? null,
-    photos: photos.length ? photos : (product?.photos ?? []),
-    videoUrls: videoUrls.length ? videoUrls : (product?.videoUrls ?? []),
+    photos,
+    videoUrls,
     grower: product?.grower ?? null,
     thcPercent: item.thcPercent ?? product?.thcPercent ?? null,
     genetics: item.genetics ?? product?.genetics ?? null,

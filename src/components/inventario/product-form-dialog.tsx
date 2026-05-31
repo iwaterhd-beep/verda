@@ -187,8 +187,12 @@ export function ProductFormDialog({
       if (!genetic) return;
       const farm = farms.find((f) => f.id === (genetic.farmId || farmId));
       const media = resolveCatalogMedia(genetic, farm);
-      if (media.photos.length) setPhotos(media.photos);
-      if (media.videoUrls.length) setVideoUrls(media.videoUrls);
+      if (media.photos.length) {
+        setPhotos((prev) => (prev.length ? prev : media.photos));
+      }
+      if (media.videoUrls.length) {
+        setVideoUrls((prev) => (prev.length ? prev : media.videoUrls));
+      }
       if (media.photos.length || media.videoUrls.length) {
         catalogMediaSyncedRef.current = true;
       }
@@ -200,8 +204,12 @@ export function ProductFormDialog({
       if (!item) return;
       const jar = jars.find((j) => j.id === (item.jarId || jarId));
       const media = resolveCatalogMedia(item, jar);
-      if (media.photos.length) setPhotos(media.photos);
-      if (media.videoUrls.length) setVideoUrls(media.videoUrls);
+      if (media.photos.length) {
+        setPhotos((prev) => (prev.length ? prev : media.photos));
+      }
+      if (media.videoUrls.length) {
+        setVideoUrls((prev) => (prev.length ? prev : media.videoUrls));
+      }
       if (media.photos.length || media.videoUrls.length) {
         catalogMediaSyncedRef.current = true;
       }
@@ -361,8 +369,12 @@ export function ProductFormDialog({
     if (!item) return;
     setName(item.name);
     const media = resolveCatalogMedia(item, jar);
-    if (media.photos.length) setPhotos(media.photos);
-    if (media.videoUrls.length) setVideoUrls(media.videoUrls);
+    if (media.photos.length) {
+      setPhotos((prev) => (prev.length ? prev : media.photos));
+    }
+    if (media.videoUrls.length) {
+      setVideoUrls((prev) => (prev.length ? prev : media.videoUrls));
+    }
     applyCatalogEntryFields(item);
   }
 
@@ -371,8 +383,12 @@ export function ProductFormDialog({
     if (!genetic) return;
     setName(genetic.name);
     const media = resolveCatalogMedia(genetic, farm);
-    if (media.photos.length) setPhotos(media.photos);
-    if (media.videoUrls.length) setVideoUrls(media.videoUrls);
+    if (media.photos.length) {
+      setPhotos((prev) => (prev.length ? prev : media.photos));
+    }
+    if (media.videoUrls.length) {
+      setVideoUrls((prev) => (prev.length ? prev : media.videoUrls));
+    }
     applyCatalogEntryFields(genetic);
   }
 

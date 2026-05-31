@@ -125,13 +125,17 @@ export async function enrichProductsWithCatalogMedia(
           rowToMedia(genetic),
           farm ? rowToMedia(farm) : null,
         );
-        if (media.photos.length || media.videoUrls.length) {
+        const productVideos = productVideoUrls(next);
+        const hasProductPhotos = (next.photos?.length ?? 0) > 0;
+        const hasProductVideos = productVideos.length > 0;
+        if (
+          (media.photos.length && !hasProductPhotos) ||
+          (media.videoUrls.length && !hasProductVideos)
+        ) {
           next = {
             ...next,
-            photos: media.photos.length ? media.photos : next.photos,
-            videoUrls: media.videoUrls.length
-              ? media.videoUrls
-              : productVideoUrls(next),
+            photos: hasProductPhotos ? next.photos : media.photos,
+            videoUrls: hasProductVideos ? productVideos : media.videoUrls,
           };
         }
       }
@@ -145,13 +149,17 @@ export async function enrichProductsWithCatalogMedia(
           rowToMedia(item),
           jar ? rowToMedia(jar) : null,
         );
-        if (media.photos.length || media.videoUrls.length) {
+        const productVideos = productVideoUrls(next);
+        const hasProductPhotos = (next.photos?.length ?? 0) > 0;
+        const hasProductVideos = productVideos.length > 0;
+        if (
+          (media.photos.length && !hasProductPhotos) ||
+          (media.videoUrls.length && !hasProductVideos)
+        ) {
           next = {
             ...next,
-            photos: media.photos.length ? media.photos : next.photos,
-            videoUrls: media.videoUrls.length
-              ? media.videoUrls
-              : productVideoUrls(next),
+            photos: hasProductPhotos ? next.photos : media.photos,
+            videoUrls: hasProductVideos ? productVideos : media.videoUrls,
           };
         }
       }

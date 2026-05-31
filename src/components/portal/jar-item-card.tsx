@@ -35,9 +35,7 @@ export function JarItemCard({
 }: JarItemCardProps) {
   const [detailOpen, setDetailOpen] = React.useState(false);
   const preview = jarItemToProductPreview(item, product, jar);
-  const hasMedia =
-    catalogEntryHasMedia(item, jar) ||
-    Boolean(product && product.photos?.length);
+  const hasMedia = catalogEntryHasMedia(item, jar, product);
   const soldOut = (item.stock ?? 0) <= 0 || !product;
   const cartProductId = product?.id;
 
@@ -171,7 +169,7 @@ export function JarItemCard({
       </div>
 
       <ProductDetailSheet
-        product={product ?? preview}
+        product={preview}
         open={detailOpen}
         onOpenChange={setDetailOpen}
       />
