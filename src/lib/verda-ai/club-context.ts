@@ -87,10 +87,10 @@ export async function fetchVerdaAiClubContext(): Promise<
 
   let productsRes = productsInitial;
   if (productsRes.error && /hidden_from_members/i.test(productsRes.error.message)) {
-    productsRes = await supabase
+    productsRes = (await supabase
       .from("products")
       .select("name, stock, low_stock_threshold")
-      .eq("club_id", clubId);
+      .eq("club_id", clubId)) as typeof productsInitial;
   }
 
   let hiddenProductCount = 0;
