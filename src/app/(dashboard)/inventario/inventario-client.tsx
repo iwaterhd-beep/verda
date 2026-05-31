@@ -26,9 +26,9 @@ import {
 } from "@/components/inventario/product-form-dialog";
 import { DeleteProductDialog } from "@/components/inventario/delete-product-dialog";
 import { toggleProductHiddenAction } from "@/app/(dashboard)/inventario/actions";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { ProductPrice, hasProductOffer } from "@/lib/product-price";
-import { getCategoryDisplay, categoryBadgeStyle } from "@/lib/product-meta";
+import { getCategoryDisplay, categoryBadgeStyle, categoryChipStyle } from "@/lib/product-meta";
 import { productMediaThumb } from "@/components/portal/product-media-gallery";
 import { fetchClubCategories } from "@/lib/data/product-categories";
 import type { Product } from "@/types";
@@ -38,6 +38,7 @@ export function InventarioClient() {
   const [editProduct, setEditProduct] = React.useState<Product | null>(null);
   const [deleteProduct, setDeleteProduct] = React.useState<Product | null>(null);
   const [togglingHiddenId, setTogglingHiddenId] = React.useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = React.useState<string>("ALL");
 
   async function toggleHidden(product: Product) {
     setTogglingHiddenId(product.id);
@@ -70,7 +71,31 @@ export function InventarioClient() {
     queryFn: fetchClubCategories,
   });
 
-  const lowStock = products.filter((p) => p.stock < p.lowStockThreshold);
+  const sortedCategories = React.useMemo(
+    () =>
+      [...categories].sort(
+        (a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label),
+      ),
+    [categories],
+  );
+
+  const usedCategories = React.useMemo(
+    () =>
+      sortedCategories.filter((c) =>
+        products.some((p) => p.category === c.id),
+      ),
+    [sortedCategories, products],
+  );
+
+  const filteredProducts = React.useMemo(
+    () =>
+      categoryFilter === "ALL"
+        ? products
+        : products.filter((p) => p.category === categoryFilter),
+    [products, categoryFilter],
+  );
+
+  const lowStock = filteredProducts.filter((p) => p.stock < p.lowStockThreshold);
 
   return (
     <div className="mx-auto max-w-[1400px]">
@@ -113,12 +138,12 @@ export function InventarioClient() {
       ) : (
         <>
           <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <MiniStat icon={Package} label="Referencias" value={String(products.length)} />
+            <MiniStat icon={Package} label="Referencias" value={String(filteredProducts.length)} />
             <MiniStat
               icon={Package}
               label="Unidades totales"
               value={String(
-                Math.round(products.reduce((a, p) => a + p.stock, 0) * 100) / 100,
+                Math.round(filteredProducts.reduce((a, p) => a + p.stock, 0) * 100) / 100,
               )}
             />
             <MiniStat
@@ -131,10 +156,39 @@ export function InventarioClient() {
               icon={Package}
               label="Valor inventario"
               value={formatCurrency(
-                products.reduce((a, p) => a + p.stock * p.pricePerUnit, 0),
+                filteredProducts.reduce((a, p) => a + p.stock * p.pricePerUnit, 0),
               )}
             />
           </div>
+
+          {usedCategories.length > 0 && (
+            <div className="mb-4 space-y-2">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Filtrar por categoría
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <CategoryChip
+                  active={categoryFilter === "ALL"}
+                  onClick={() => setCategoryFilter("ALL")}
+                >
+                  Todas
+                </CategoryChip>
+                {usedCategories.map((c) => {
+                  const display = getCategoryDisplay(c.id, categories);
+                  return (
+                    <CategoryChip
+                      key={c.id}
+                      active={categoryFilter === c.id}
+                      accentColor={display.color}
+                      onClick={() => setCategoryFilter(c.id)}
+                    >
+                      {display.emoji} {display.label}
+                    </CategoryChip>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <Card className="overflow-hidden">
             <Table>
@@ -151,17 +205,19 @@ export function InventarioClient() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.length === 0 ? (
+                {filteredProducts.length === 0 ? (
                   <TableRow>
                     <TableCell
                       colSpan={8}
                       className="py-12 text-center text-sm text-muted-foreground"
                     >
-                      No hay productos. Crea el primero con &quot;Nuevo producto&quot;.
+                      {products.length === 0
+                        ? 'No hay productos. Crea el primero con "Nuevo producto".'
+                        : "No hay productos en esta categoría."}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  products.map((p) => {
+                  filteredProducts.map((p) => {
                     const low = p.stock < p.lowStockThreshold;
                     const thumb = productMediaThumb(p);
                     return (
@@ -320,6 +376,35 @@ export function InventarioClient() {
         </>
       )}
     </div>
+  );
+}
+
+function CategoryChip({
+  active,
+  accentColor,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  accentColor?: string;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "min-h-9 shrink-0 touch-manipulation whitespace-nowrap rounded-full border px-3 py-1.5 text-sm font-medium transition-colors active:scale-[0.98]",
+        !accentColor &&
+          (active
+            ? "border-primary bg-primary/15 text-primary"
+            : "border-border text-muted-foreground hover:text-foreground"),
+      )}
+      style={accentColor ? categoryChipStyle(accentColor, active) : undefined}
+    >
+      {children}
+    </button>
   );
 }
 
