@@ -30,6 +30,7 @@ import {
 } from "@/app/(dashboard)/inventario/actions";
 import {
   uploadProductVideoClient,
+  uploadProductVideosParallel,
   removeStorageFileClient,
   syncProductMediaClient,
   productVideoUrls,
@@ -39,6 +40,7 @@ import {
   MAX_PRODUCT_VIDEOS,
   maxVideoSizeLabel,
 } from "@/lib/product-media-limits";
+import { formatFileSize } from "@/lib/utils";
 import { ProductStrainFields } from "@/components/inventario/product-strain-fields";
 import { isCannabisProduct } from "@/lib/product-strain";
 import { productCategoriesFromList, unitMeta, unitOptions } from "@/lib/product-meta";
@@ -95,8 +97,9 @@ export function ProductFormDialog({
     product ? productVideoUrls(product) : [],
   );
   const [pendingVideos, setPendingVideos] = React.useState<
-    { file: File; preview: string }[]
+    { file: File; preview: string; uploading?: boolean }[]
   >([]);
+  const [uploadingVideoCount, setUploadingVideoCount] = React.useState(0);
   const videoInputRef = React.useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { data: categories = [] } = useQuery({
@@ -146,10 +149,60 @@ export function ProductFormDialog({
       toast.error(`Máximo ${MAX_PRODUCT_VIDEOS} vídeos por producto`);
       return;
     }
+
+    if (product?.id) {
+      void uploadVideoNow(product.id, file);
+      return;
+    }
+
     setPendingVideos((prev) => [
       ...prev,
       { file, preview: URL.createObjectURL(file) },
     ]);
+    toast.info(`Vídeo añadido (${formatFileSize(file.size)}). Se subirá al guardar.`);
+  }
+
+  async function uploadVideoNow(productId: string, file: File) {
+    const preview = URL.createObjectURL(file);
+    setPendingVideos((prev) => [...prev, { file, preview, uploading: true }]);
+    setUploadingVideoCount((n) => n + 1);
+
+    const sizeLabel = formatFileSize(file.size);
+    const toastId = toast.loading(`Subiendo vídeo (${sizeLabel})… 0%`);
+
+    const up = await uploadProductVideoClient(productId, file, (pct) => {
+      toast.loading(`Subiendo vídeo (${sizeLabel})… ${pct}%`, { id: toastId });
+    });
+
+    toast.dismiss(toastId);
+    setUploadingVideoCount((n) => Math.max(0, n - 1));
+    setPendingVideos((prev) => {
+      const next = prev.filter((p) => p.preview !== preview);
+      URL.revokeObjectURL(preview);
+      return next;
+    });
+
+    if (up.error || !up.url) {
+      toast.error("No se pudo subir el vídeo", { description: up.error });
+      return;
+    }
+
+    setVideoUrls((prev) => {
+      const merged = [...prev, up.url!];
+      void syncProductMediaClient(productId, photos, merged).then((sync) => {
+        if (sync.error) {
+          toast.error("Vídeo subido, pero falló guardar en el producto", {
+            description: sync.error,
+          });
+          return;
+        }
+        void queryClient.invalidateQueries({ queryKey: ["club-products"] });
+        void queryClient.invalidateQueries({ queryKey: ["portal-products"] });
+      });
+      return merged;
+    });
+
+    toast.success("Vídeo subido");
   }
 
   async function removeVideoUrl(index: number) {
@@ -166,6 +219,8 @@ export function ProductFormDialog({
 
   function removePendingVideo(index: number) {
     setPendingVideos((prev) => {
+      const item = prev[index];
+      if (!item || item.uploading) return prev;
       const next = [...prev];
       URL.revokeObjectURL(next[index].preview);
       next.splice(index, 1);
@@ -265,39 +320,45 @@ export function ProductFormDialog({
       }
 
       if (productId && pendingVideos.length > 0) {
-        let finalVideoUrls = [...videoUrls];
-        for (let i = 0; i < pendingVideos.length; i++) {
-          const pending = pendingVideos[i];
+        const files = pendingVideos.filter((p) => !p.uploading).map((p) => p.file);
+        if (files.length > 0) {
           const toastId = toast.loading(
-            `Subiendo vídeo ${i + 1}/${pendingVideos.length}…`,
+            `Subiendo ${files.length} vídeo${files.length > 1 ? "s" : ""}…`,
           );
-          const up = await uploadProductVideoClient(productId, pending.file);
+          const { urls, errors } = await uploadProductVideosParallel(
+            productId,
+            files,
+            (done, total) => {
+              toast.loading(`Subiendo vídeos… ${done}/${total}`, { id: toastId });
+            },
+          );
           toast.dismiss(toastId);
-          if (up.error) {
-            toast.error("Producto guardado, pero falló un vídeo", {
-              description: up.error,
+
+          if (errors.length) {
+            toast.error("Algunos vídeos no se subieron", {
+              description: errors[0],
             });
-          } else if (up.url) {
-            finalVideoUrls.push(up.url);
-            toast.success(`Vídeo ${i + 1} subido`);
+          }
+
+          const finalVideoUrls = [...videoUrls, ...urls];
+          if (urls.length > 0) {
+            const sync = await syncProductMediaClient(
+              productId,
+              photos,
+              finalVideoUrls,
+            );
+            if (sync.error) {
+              toast.error("Producto guardado, pero falló sincronizar vídeos", {
+                description: sync.error,
+              });
+            } else {
+              setVideoUrls(finalVideoUrls);
+            }
           }
         }
 
-        if (
-          pendingVideos.length > 0 ||
-          finalVideoUrls.length !== videoUrls.length
-        ) {
-          const sync = await syncProductMediaClient(
-            productId,
-            photos,
-            finalVideoUrls,
-          );
-          if (sync.error) {
-            toast.error("Producto guardado, pero falló sincronizar vídeos", {
-              description: sync.error,
-            });
-          }
-        }
+        pendingVideos.forEach((p) => URL.revokeObjectURL(p.preview));
+        setPendingVideos([]);
       }
 
       await queryClient.invalidateQueries({ queryKey: ["club-products"] });
@@ -554,12 +615,19 @@ export function ProductFormDialog({
                     loop
                     muted
                     playsInline
-                    className="aspect-video w-full object-cover"
+                    className="aspect-video w-full object-cover opacity-80"
                   />
+                  {pending.uploading && (
+                    <span className="absolute inset-0 grid place-items-center bg-background/60 text-xs font-medium">
+                      <Loader2 className="mr-1 inline h-4 w-4 animate-spin" />
+                      Subiendo…
+                    </span>
+                  )}
                   <button
                     type="button"
+                    disabled={pending.uploading}
                     onClick={() => removePendingVideo(i)}
-                    className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-background/90 text-destructive"
+                    className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-background/90 text-destructive disabled:opacity-40"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -597,7 +665,7 @@ export function ProductFormDialog({
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || uploadingVideoCount > 0}>
               {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               {mode === "create" ? "Crear producto" : "Guardar cambios"}
             </Button>

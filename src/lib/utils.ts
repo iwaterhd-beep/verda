@@ -17,6 +17,12 @@ export function formatNumber(value: number) {
   return new Intl.NumberFormat("es-ES").format(value);
 }
 
+export function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function formatDate(
   date: Date | string | null | undefined,
   withTime = false,
@@ -46,6 +52,13 @@ export function avatarUrl(seed: string) {
   return `https://api.dicebear.com/9.x/glass/svg?seed=${encodeURIComponent(
     seed,
   )}&radius=20`;
+}
+
+export function memberAvatarUrl(member: {
+  avatarUrl?: string | null;
+  avatarSeed: string;
+}) {
+  return member.avatarUrl || avatarUrl(member.avatarSeed);
 }
 
 export function relativeTime(date: Date | string | null | undefined) {

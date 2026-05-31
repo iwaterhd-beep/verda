@@ -9,6 +9,16 @@
 
 @layer base {
   :root {
+    --portal-nav-height: 3.75rem;
+    --portal-cart-bar-height: 3.25rem;
+    --portal-safe-top: env(safe-area-inset-top, 0px);
+    --portal-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --portal-safe-left: env(safe-area-inset-left, 0px);
+    --portal-safe-right: env(safe-area-inset-right, 0px);
+    --portal-bottom-nav: calc(var(--portal-nav-height) + var(--portal-safe-bottom));
+    --portal-cart-offset: calc(var(--portal-bottom-nav) + 0.5rem);
+    --portal-cart-bar-bottom: calc(var(--portal-bottom-nav) + 0.25rem);
+
     /* Light (cálido, blancos suaves) */
     --background: 40 30% 98%;
     --foreground: 160 12% 10%;
@@ -86,6 +96,7 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    -webkit-tap-highlight-color: transparent;
   }
   ::selection {
     @apply bg-primary/30 text-foreground;
@@ -150,5 +161,53 @@
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
     @apply rounded-full bg-border;
+  }
+
+  .portal-shell {
+    min-height: 100dvh;
+    min-height: 100svh;
+    padding-top: max(1.25rem, var(--portal-safe-top));
+    padding-bottom: calc(var(--portal-bottom-nav) + 1rem);
+    padding-left: max(1rem, var(--portal-safe-left));
+    padding-right: max(1rem, var(--portal-safe-right));
+    overscroll-behavior-y: none;
+  }
+
+  .portal-scroll-x {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .portal-scroll-x::-webkit-scrollbar {
+    display: none;
+  }
+
+  .portal-scroll-x > * {
+    scroll-snap-align: start;
+  }
+
+  .portal-sticky-footer {
+    position: sticky;
+    bottom: calc(var(--portal-bottom-nav) - 0.75rem);
+    z-index: 20;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    padding: 0.75rem 1rem calc(0.75rem + var(--portal-safe-bottom));
+    background: linear-gradient(
+      to top,
+      hsl(var(--background)) 75%,
+      hsl(var(--background) / 0)
+    );
+    backdrop-filter: blur(8px);
+  }
+
+  .portal-dialog {
+    @apply inset-x-0 bottom-0 top-auto max-h-[92dvh] w-full max-w-md translate-x-0 translate-y-0 overflow-y-auto rounded-b-none rounded-t-2xl;
+    @apply sm:inset-auto sm:left-[50%] sm:top-[50%] sm:max-h-[85vh] sm:translate-x-[-50%] sm:translate-y-[-50%] sm:rounded-2xl;
+  }
+
+  .touch-target {
+    @apply min-h-11 min-w-11 touch-manipulation;
   }
 }

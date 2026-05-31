@@ -21,6 +21,7 @@ type MemberRow = {
   age_verified: boolean | null;
   joined_at: string | null;
   expires_at: string | null;
+  avatar_url: string | null;
 };
 
 function toMember(r: MemberRow): Member {
@@ -42,6 +43,7 @@ function toMember(r: MemberRow): Member {
     signatureSigned: true,
     ageVerified: !!r.age_verified,
     avatarSeed: r.full_name,
+    avatarUrl: r.avatar_url,
     walletBalance: Number(r.wallet_balance ?? 0),
   };
 }

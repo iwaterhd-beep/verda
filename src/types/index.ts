@@ -25,6 +25,7 @@ export interface Member {
   signatureSigned: boolean;
   ageVerified: boolean;
   avatarSeed: string;
+  avatarUrl?: string | null;
   walletBalance: number;
 }
 

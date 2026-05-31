@@ -45,7 +45,7 @@ import {
   updateMemberStatus,
   deleteMember,
 } from "@/lib/data/members";
-import { avatarUrl, formatDate } from "@/lib/utils";
+import { formatDate, memberAvatarUrl } from "@/lib/utils";
 import type { Member } from "@/types";
 
 export function MembersTable() {
@@ -143,7 +143,7 @@ export function MembersTable() {
               <TableCell>
                 <Link href={`/socios/${m.id}`} className="flex items-center gap-3">
                   <Avatar>
-                    <AvatarImage src={avatarUrl(m.avatarSeed)} />
+                    <AvatarImage src={memberAvatarUrl(m)} />
                     <AvatarFallback>{m.fullName.slice(0, 2)}</AvatarFallback>
                   </Avatar>
                   <div className="min-w-0">

@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { generateTempPassword } from "@/lib/auth/temp-password";
+import { uploadMemberAvatarFromDataUrl } from "@/lib/member-avatar-server";
 
 export interface ApproveResult {
   error?: string;
@@ -64,7 +65,7 @@ export async function approveApplicationAction(
 
   const userId = created.user.id;
 
-  const { error: memberErr } = await admin.from("members").insert({
+  const { data: memberRow, error: memberErr } = await admin.from("members").insert({
     club_id: appClubId,
     user_id: userId,
     full_name: app.full_name,
@@ -79,12 +80,22 @@ export async function approveApplicationAction(
     qr_code: `VRD-${Math.floor(Math.random() * 9000 + 1000)}`,
     age_verified: true,
     expires_at: new Date(Date.now() + 365 * 864e5).toISOString().slice(0, 10),
-  });
+  }).select("id").single();
 
-  if (memberErr) {
+  if (memberErr || !memberRow) {
     // Revertir la cuenta creada para no dejar huérfanos.
     await admin.auth.admin.deleteUser(userId);
-    return { error: memberErr.message };
+    return { error: memberErr?.message ?? "No se pudo crear la ficha del socio." };
+  }
+
+  const avatarUrl = await uploadMemberAvatarFromDataUrl(
+    admin,
+    appClubId,
+    memberRow.id,
+    app.face_photo as string | null,
+  );
+  if (avatarUrl) {
+    await admin.from("members").update({ avatar_url: avatarUrl }).eq("id", memberRow.id);
   }
 
   const { error: updErr } = await admin

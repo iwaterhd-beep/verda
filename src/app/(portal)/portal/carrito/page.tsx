@@ -107,9 +107,9 @@ export default function CartPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-2">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" onClick={() => router.back()}>
+        <Button variant="ghost" size="icon" className="touch-target" onClick={() => router.back()}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <h1 className="text-2xl font-semibold tracking-tight">Tu pedido</h1>
@@ -139,32 +139,35 @@ export default function CartPage() {
                     </p>
                   ) : null}
                 </div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex shrink-0 items-center gap-1">
                   <Button
                     size="icon"
                     variant="outline"
-                    className="h-8 w-8"
+                    className="touch-target h-11 w-11"
+                    aria-label="Quitar uno"
                     onClick={() => decrement(i.productId)}
                   >
-                    <Minus className="h-3.5 w-3.5" />
+                    <Minus className="h-4 w-4" />
                   </Button>
-                  <span className="w-5 text-center text-sm font-medium">
+                  <span className="min-w-8 text-center text-base font-semibold">
                     {i.qty}
                   </span>
                   <Button
                     size="icon"
-                    className="h-8 w-8"
+                    className="touch-target h-11 w-11"
+                    aria-label="Añadir uno"
                     onClick={() => add(productFromCartItem(i))}
                   >
-                    <Plus className="h-3.5 w-3.5" />
+                    <Plus className="h-4 w-4" />
                   </Button>
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8 text-muted-foreground"
+                    className="touch-target h-11 w-11 text-muted-foreground"
+                    aria-label="Eliminar del pedido"
                     onClick={() => remove(i.productId)}
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </CardContent>
@@ -189,9 +192,10 @@ export default function CartPage() {
           {methods.map((opt) => (
             <button
               key={opt.id}
+              type="button"
               onClick={() => setMethod(opt.id)}
               className={cn(
-                "flex flex-col items-center gap-1.5 rounded-xl border py-3 text-xs font-medium transition-colors",
+                "flex min-h-[4.5rem] touch-manipulation flex-col items-center justify-center gap-1.5 rounded-xl border py-3 text-xs font-medium transition-colors active:scale-[0.98]",
                 method === opt.id
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border text-muted-foreground",
@@ -232,17 +236,23 @@ export default function CartPage() {
         </CardContent>
       </Card>
 
-      <Button
-        size="lg"
-        className="w-full"
-        disabled={overLimit || insufficientWallet || paying}
-        onClick={confirm}
-      >
-        <ShoppingBag className="h-4 w-4" /> Confirmar pedido
-      </Button>
-      <p className="pb-2 text-center text-xs text-muted-foreground">
-        Recogerás tu pedido presentando tu carnet QR en el club.
-      </p>
+      <div className="portal-sticky-footer space-y-3">
+        <div className="flex items-center justify-between text-lg font-semibold">
+          <span>Total a pagar</span>
+          <span className="text-primary">{formatCurrency(total())}</span>
+        </div>
+        <Button
+          size="lg"
+          className="min-h-12 w-full touch-manipulation text-base"
+          disabled={overLimit || insufficientWallet || paying}
+          onClick={confirm}
+        >
+          <ShoppingBag className="h-4 w-4" /> Confirmar pedido
+        </Button>
+        <p className="text-center text-xs text-muted-foreground">
+          Recogerás tu pedido presentando tu carnet QR en el club.
+        </p>
+      </div>
     </div>
   );
 }

@@ -30,7 +30,7 @@ import { StatusBadge, PlanBadge } from "@/components/members/status-badge";
 import { WalletPanel } from "@/components/members/wallet-panel";
 import { fetchMember } from "@/lib/data/members";
 import { accessLogs } from "@/lib/mock-data";
-import { avatarUrl, formatDate, relativeTime } from "@/lib/utils";
+import { memberAvatarUrl, formatDate, relativeTime } from "@/lib/utils";
 
 export default function MemberDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -73,7 +73,7 @@ export default function MemberDetailPage() {
         <Card className="lg:col-span-1">
           <CardContent className="flex flex-col items-center pt-6 text-center">
             <Avatar className="h-20 w-20 rounded-2xl">
-              <AvatarImage src={avatarUrl(member.avatarSeed)} />
+              <AvatarImage src={memberAvatarUrl(member)} />
               <AvatarFallback className="text-lg">
                 {member.fullName.slice(0, 2)}
               </AvatarFallback>

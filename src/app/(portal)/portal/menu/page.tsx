@@ -9,11 +9,13 @@ import { CartBar } from "@/components/portal/cart-bar";
 import { fetchClubProducts } from "@/lib/data/products";
 import { fetchClubCategories } from "@/lib/data/product-categories";
 import { getCategoryDisplay } from "@/lib/product-meta";
+import { useCart } from "@/store/use-cart";
 import { cn } from "@/lib/utils";
 
 export default function MenuPage() {
   const [query, setQuery] = React.useState("");
   const [category, setCategory] = React.useState<string>("ALL");
+  const cartCount = useCart((s) => s.count());
 
   const { data: products = [], isLoading, error } = useQuery({
     queryKey: ["portal-products"],
@@ -36,7 +38,12 @@ export default function MenuPage() {
   });
 
   return (
-    <div className="space-y-4">
+    <div
+      className={cn(
+        "space-y-4",
+        cartCount > 0 && "pb-[calc(var(--portal-cart-bar-height)+0.75rem)]",
+      )}
+    >
       <h1 className="text-2xl font-semibold tracking-tight">Menú</h1>
 
       <div className="relative">
@@ -46,10 +53,12 @@ export default function MenuPage() {
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar producto…"
           className="pl-9"
+          inputMode="search"
+          enterKeyHint="search"
         />
       </div>
 
-      <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-thin">
+      <div className="portal-scroll-x -mx-4 flex gap-2 px-4 pb-1">
         <Chip active={category === "ALL"} onClick={() => setCategory("ALL")}>
           Todo
         </Chip>
@@ -108,7 +117,7 @@ function Chip({
     <button
       onClick={onClick}
       className={cn(
-        "whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
+        "min-h-10 shrink-0 touch-manipulation whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-colors active:scale-[0.98]",
         active
           ? "border-primary bg-primary/15 text-primary"
           : "border-border text-muted-foreground hover:text-foreground",

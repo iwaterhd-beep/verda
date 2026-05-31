@@ -4,14 +4,14 @@ import Link from "next/link";
 import { Wallet, ArrowRight, Bell } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { MemberAvatarPicker } from "@/components/portal/member-avatar-picker";
 import { ProductCard } from "@/components/portal/product-card";
 import { MemberQrCard } from "@/components/portal/member-qr-card";
 import { useQuery } from "@tanstack/react-query";
 import { currentMember } from "@/lib/current-member";
 import { fetchMyMember } from "@/lib/data/members";
 import { fetchClubProducts } from "@/lib/data/products";
-import { avatarUrl, formatCurrency } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 
 export default function PortalHomePage() {
   const { data } = useQuery({ queryKey: ["my-member"], queryFn: fetchMyMember });
@@ -26,10 +26,7 @@ export default function PortalHomePage() {
     <div className="space-y-5">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Avatar className="h-11 w-11 rounded-2xl">
-            <AvatarImage src={avatarUrl(m.avatarSeed)} />
-            <AvatarFallback>{m.fullName.slice(0, 2)}</AvatarFallback>
-          </Avatar>
+          <MemberAvatarPicker member={m} size="md" editable={false} />
           <div>
             <p className="text-sm text-muted-foreground">Hola,</p>
             <p className="font-semibold leading-none">
@@ -37,7 +34,7 @@ export default function PortalHomePage() {
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="relative" asChild>
+        <Button variant="ghost" size="icon" className="touch-target relative" asChild>
           <Link href="/portal/perfil/notificaciones" aria-label="Notificaciones">
             <Bell className="h-5 w-5" />
             <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-primary" />

@@ -18,8 +18,14 @@ export function BottomNav() {
   const count = useCart((s) => s.count());
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto grid max-w-md grid-cols-4">
+    <nav
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/90 backdrop-blur-xl"
+      style={{ paddingBottom: "var(--portal-safe-bottom)" }}
+    >
+      <div
+        className="mx-auto grid max-w-md grid-cols-4"
+        style={{ minHeight: "var(--portal-nav-height)" }}
+      >
         {items.map((item) => {
           const active =
             item.href === "/portal"
@@ -30,14 +36,14 @@ export function BottomNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "relative flex flex-col items-center gap-1 py-2.5 text-[0.7rem] font-medium transition-colors",
+                "relative flex min-h-11 flex-col items-center justify-center gap-0.5 touch-manipulation text-[0.7rem] font-medium transition-colors active:opacity-70",
                 active ? "text-primary" : "text-muted-foreground",
               )}
             >
               <span className="relative">
                 <item.icon className="h-5 w-5" />
                 {item.href === "/portal/pedidos" && count > 0 && (
-                  <span className="absolute -right-2 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[0.6rem] text-primary-foreground">
+                  <span className="absolute -right-2.5 -top-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[0.6rem] text-primary-foreground">
                     {count}
                   </span>
                 )}

@@ -13,7 +13,7 @@ type MediaItem =
   | { type: "video"; url: string }
   | { type: "photo"; url: string };
 
-function buildMediaItems(product: Product): MediaItem[] {
+export function buildProductMediaItems(product: Product): MediaItem[] {
   return [
     ...productVideoUrls(product).map((url) => ({
       type: "video" as const,
@@ -26,17 +26,30 @@ function buildMediaItems(product: Product): MediaItem[] {
   ];
 }
 
-export function ProductMediaGallery({ product }: { product: Product }) {
-  const items = buildMediaItems(product);
+interface ProductMediaGalleryProps {
+  product: Product;
+  variant?: "card" | "detail";
+  className?: string;
+}
+
+export function ProductMediaGallery({
+  product,
+  variant = "card",
+  className,
+}: ProductMediaGalleryProps) {
+  const items = buildProductMediaItems(product);
   const [active, setActive] = React.useState(0);
 
   if (!items.length) return null;
 
   const current = items[active] ?? items[0];
+  const isDetail = variant === "detail";
+  const aspect = isDetail ? "aspect-[4/5] sm:aspect-video" : "aspect-[16/9]";
+  const thumbSize = isDetail ? "h-16 w-16" : "h-12 w-12";
 
   return (
-    <div>
-      <div className="relative aspect-[16/9] w-full bg-secondary">
+    <div className={className}>
+      <div className={cn("relative w-full bg-secondary", aspect)}>
         {current.type === "video" ? (
           <video
             key={current.url}
@@ -45,6 +58,7 @@ export function ProductMediaGallery({ product }: { product: Product }) {
             loop
             muted
             playsInline
+            controls={isDetail}
             className="h-full w-full object-cover"
           />
         ) : (
@@ -59,14 +73,20 @@ export function ProductMediaGallery({ product }: { product: Product }) {
       </div>
 
       {items.length > 1 && (
-        <div className="flex gap-1.5 overflow-x-auto border-t border-border/60 px-3 py-2">
+        <div
+          className={cn(
+            "portal-scroll-x flex gap-2 border-t border-border/60 px-3 py-2",
+            isDetail && "px-0 py-3",
+          )}
+        >
           {items.map((item, i) => (
             <button
               key={`${item.type}-${item.url}`}
               type="button"
               onClick={() => setActive(i)}
               className={cn(
-                "relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border-2 transition-colors",
+                "relative shrink-0 overflow-hidden rounded-lg border-2 transition-colors touch-manipulation",
+                thumbSize,
                 i === active ? "border-primary" : "border-transparent opacity-70",
               )}
             >

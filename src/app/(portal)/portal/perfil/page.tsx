@@ -20,7 +20,7 @@ import {
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { MemberAvatarPicker } from "@/components/portal/member-avatar-picker";
 import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
@@ -36,7 +36,7 @@ import { PlanBadge, StatusBadge } from "@/components/members/status-badge";
 import { useQuery } from "@tanstack/react-query";
 import { currentMember } from "@/lib/current-member";
 import { fetchMyMember } from "@/lib/data/members";
-import { avatarUrl, formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function PerfilPage() {
   const { data } = useQuery({ queryKey: ["my-member"], queryFn: fetchMyMember });
@@ -65,13 +65,11 @@ export default function PerfilPage() {
 
       <Card>
         <CardContent className="flex flex-col items-center p-6 text-center">
-          <Avatar className="h-20 w-20 rounded-2xl">
-            <AvatarImage src={avatarUrl(m.avatarSeed)} />
-            <AvatarFallback className="text-lg">
-              {m.fullName.slice(0, 2)}
-            </AvatarFallback>
-          </Avatar>
-          <p className="mt-3 text-lg font-semibold">{m.fullName}</p>
+          <MemberAvatarPicker member={m} size="lg" />
+          <p className="mt-2 text-xs text-muted-foreground">
+            Toca tu foto para cambiarla
+          </p>
+          <p className="mt-1 text-lg font-semibold">{m.fullName}</p>
           <div className="mt-2 flex gap-2">
             <PlanBadge plan={m.membershipPlan} />
             <StatusBadge status={m.status} />
@@ -129,7 +127,7 @@ export default function PerfilPage() {
           <button
             type="button"
             onClick={() => setPwdOpen(true)}
-            className="flex w-full items-center gap-3 rounded-xl p-3 text-sm transition-colors hover:bg-secondary/60"
+            className="flex min-h-12 w-full touch-manipulation items-center gap-3 rounded-xl px-3 text-sm transition-colors hover:bg-secondary/60 active:bg-secondary/80"
           >
             <KeyRound className="h-4 w-4 text-primary" />
             <span className="flex-1 text-left">Cambiar contraseña</span>
@@ -148,15 +146,15 @@ export default function PerfilPage() {
         <Button
           type="submit"
           variant="outline"
-          className="w-full text-destructive"
+          className="min-h-12 w-full touch-manipulation text-destructive"
         >
           <LogOut className="h-4 w-4" /> Cerrar sesión
         </Button>
       </form>
 
       <Dialog open={pwdOpen} onOpenChange={setPwdOpen}>
-        <DialogContent className="max-w-sm">
-          <form onSubmit={handlePassword}>
+        <DialogContent className="portal-dialog gap-0 p-0 sm:max-w-sm">
+          <form onSubmit={handlePassword} className="p-6">
             <DialogHeader>
               <DialogTitle>Nueva contraseña</DialogTitle>
               <DialogDescription>
@@ -174,11 +172,16 @@ export default function PerfilPage() {
                 required
               />
             </div>
-            <DialogFooter className="gap-2 sm:gap-2">
-              <Button type="button" variant="ghost" onClick={() => setPwdOpen(false)}>
+            <DialogFooter className="gap-2 pt-2 sm:gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                className="min-h-11 touch-manipulation"
+                onClick={() => setPwdOpen(false)}
+              >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={pwdBusy}>
+              <Button type="submit" className="min-h-11 touch-manipulation" disabled={pwdBusy}>
                 {pwdBusy && <Loader2 className="h-4 w-4 animate-spin" />}
                 Guardar
               </Button>
@@ -192,8 +195,8 @@ export default function PerfilPage() {
 
 function Row({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
   return (
-    <div className="flex items-center gap-3 p-3 text-sm">
-      <Icon className="h-4 w-4 text-muted-foreground" />
+    <div className="flex min-h-12 items-center gap-3 px-3 py-2 text-sm">
+      <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
       <span className="truncate">{label}</span>
     </div>
   );
@@ -211,7 +214,7 @@ function ActionRow({
   return (
     <Link
       href={href}
-      className="flex items-center gap-3 rounded-xl p-3 text-sm transition-colors hover:bg-secondary/60"
+      className="flex min-h-12 touch-manipulation items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors hover:bg-secondary/60 active:bg-secondary/80"
     >
       <Icon className="h-4 w-4 text-primary" />
       <span className="flex-1">{label}</span>

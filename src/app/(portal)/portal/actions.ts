@@ -159,3 +159,38 @@ export async function changePasswordAction(
   if (error) return { error: error.message };
   return {};
 }
+
+export async function saveMemberAvatarAction(
+  avatarUrl: string,
+): Promise<{ error?: string }> {
+  const trimmed = avatarUrl.trim();
+  if (!trimmed) return { error: "URL de avatar no válida." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No has iniciado sesión." };
+
+  const { data: member, error: memberErr } = await supabase
+    .from("members")
+    .select("id, club_id")
+    .eq("user_id", user.id)
+    .single();
+  if (memberErr || !member?.club_id) {
+    return { error: "No encontramos tu ficha de socio." };
+  }
+
+  const expectedPath = `${member.club_id}/${member.id}/`;
+  if (!trimmed.includes(expectedPath)) {
+    return { error: "La foto no pertenece a tu cuenta." };
+  }
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("members")
+    .update({ avatar_url: trimmed.split("?")[0] })
+    .eq("id", member.id);
+  if (error) return { error: error.message };
+  return {};
+}

@@ -231,8 +231,12 @@ export function RegistroSocioForm({
             <CardDescription className="sr-only">Fotos requeridas</CardDescription>
           </CardHeader>
           <CardContent className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <p className="text-sm text-muted-foreground sm:col-span-3">
+              La foto de tu cara se usará como imagen de perfil en el portal una
+              vez el club apruebe tu alta.
+            </p>
             <PhotoUpload
-              label="Foto de tu cara"
+              label="Foto de perfil (cara)"
               value={facePhoto}
               onChange={setFacePhoto}
               capture="user"
