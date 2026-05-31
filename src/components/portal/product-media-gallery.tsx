@@ -7,6 +7,7 @@ import {
   productPhotos,
   productVideoUrls,
 } from "@/lib/data/product-media";
+import { mediaThumbFromLike } from "@/lib/catalog-media";
 import { ProtectedImage, ProtectedVideo } from "@/components/portal/protected-media";
 import type { Product } from "@/types";
 
@@ -105,9 +106,8 @@ export function productMediaThumb(product: Product): {
   type: "video" | "photo" | null;
   url: string | null;
 } {
-  const videos = productVideoUrls(product);
-  if (videos[0]) return { type: "video", url: videos[0] };
-  const photos = productPhotos(product);
-  if (photos[0]) return { type: "photo", url: photos[0] };
-  return { type: null, url: null };
+  return mediaThumbFromLike({
+    photos: productPhotos(product),
+    videoUrls: productVideoUrls(product),
+  });
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import { resolveCatalogMedia } from "@/lib/catalog-media";
+import { resolveProductMedia } from "@/lib/catalog-media";
 import { productVideoUrls } from "@/lib/data/product-media";
 import type { Product } from "@/types";
 
@@ -38,6 +38,13 @@ function rowToMedia(row: {
   return {
     photos: row.photos ?? [],
     videoUrls: row.video_urls ?? [],
+  };
+}
+
+function productAsMedia(product: Product) {
+  return {
+    photos: product.photos ?? [],
+    videoUrls: productVideoUrls(product),
   };
 }
 
@@ -121,21 +128,17 @@ export async function enrichProductsWithCatalogMedia(
       const genetic = geneticsById.get(product.geneticId);
       if (genetic) {
         const farm = farmsById.get(genetic.farm_id);
-        const media = resolveCatalogMedia(
+        const media = resolveProductMedia(
+          productAsMedia(next),
           rowToMedia(genetic),
           farm ? rowToMedia(farm) : null,
         );
-        const productVideos = productVideoUrls(next);
-        const hasProductPhotos = (next.photos?.length ?? 0) > 0;
-        const hasProductVideos = productVideos.length > 0;
-        if (
-          (media.photos.length && !hasProductPhotos) ||
-          (media.videoUrls.length && !hasProductVideos)
-        ) {
+        if (media.photos.length || media.videoUrls.length) {
           next = {
             ...next,
-            photos: hasProductPhotos ? next.photos : media.photos,
-            videoUrls: hasProductVideos ? productVideos : media.videoUrls,
+            photos: media.photos,
+            videoUrls: media.videoUrls,
+            videoUrl: media.videoUrls[0] ?? null,
           };
         }
       }
@@ -145,21 +148,17 @@ export async function enrichProductsWithCatalogMedia(
       const item = itemsById.get(product.jarItemId);
       if (item) {
         const jar = jarsById.get(item.jar_id);
-        const media = resolveCatalogMedia(
+        const media = resolveProductMedia(
+          productAsMedia(next),
           rowToMedia(item),
           jar ? rowToMedia(jar) : null,
         );
-        const productVideos = productVideoUrls(next);
-        const hasProductPhotos = (next.photos?.length ?? 0) > 0;
-        const hasProductVideos = productVideos.length > 0;
-        if (
-          (media.photos.length && !hasProductPhotos) ||
-          (media.videoUrls.length && !hasProductVideos)
-        ) {
+        if (media.photos.length || media.videoUrls.length) {
           next = {
             ...next,
-            photos: hasProductPhotos ? next.photos : media.photos,
-            videoUrls: hasProductVideos ? productVideos : media.videoUrls,
+            photos: media.photos,
+            videoUrls: media.videoUrls,
+            videoUrl: media.videoUrls[0] ?? null,
           };
         }
       }

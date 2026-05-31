@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { jarHasMedia } from "@/lib/product-jars";
+import { mediaThumbFromLike } from "@/lib/catalog-media";
 import type { ProductJar } from "@/types";
 
 interface PortalJarCardProps {
@@ -20,23 +21,25 @@ export function PortalJarCard({
   onSelect,
   itemsCount,
 }: PortalJarCardProps) {
-  const thumb = jar.photos[0] ?? null;
+  const thumb = mediaThumbFromLike(jar);
   const target = href ?? `/portal/menu?jar=${encodeURIComponent(jar.id)}`;
 
   const inner = (
     <Card className="overflow-hidden transition-colors hover:border-emerald-500/40">
       <CardContent className="flex items-center gap-3 p-3">
         <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-emerald-500/10">
-          {thumb ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={thumb} alt="" className="h-full w-full object-cover" />
-          ) : jar.videoUrls[0] ? (
+          {thumb.type === "video" && thumb.url ? (
             <video
-              src={jar.videoUrls[0]}
+              src={thumb.url}
+              autoPlay
+              loop
               muted
               playsInline
               className="h-full w-full object-cover"
             />
+          ) : thumb.type === "photo" && thumb.url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={thumb.url} alt="" className="h-full w-full object-cover" />
           ) : (
             <span className="grid h-full w-full place-items-center text-2xl">
               🫙

@@ -3,6 +3,22 @@ type MediaLike = {
   videoUrls?: string[];
 };
 
+function firstVideos(...sources: (MediaLike | null | undefined)[]): string[] {
+  for (const source of sources) {
+    const urls = source?.videoUrls ?? [];
+    if (urls.length) return urls;
+  }
+  return [];
+}
+
+function firstPhotos(...sources: (MediaLike | null | undefined)[]): string[] {
+  for (const source of sources) {
+    const photos = source?.photos ?? [];
+    if (photos.length) return photos;
+  }
+  return [];
+}
+
 /** Fotos/vídeos del ítem de catálogo, con fallback al contenedor padre (farm/jar). */
 export function resolveCatalogMedia(
   primary: MediaLike,
@@ -15,19 +31,33 @@ export function resolveCatalogMedia(
   return { photos, videoUrls };
 }
 
-/** Producto propio > genética/ítem > farm/jar. */
+/**
+ * Media unificada para productos vinculados.
+ * Vídeo: producto > genética/ítem > farm/jar.
+ * Foto: solo si no hay vídeo en ningún nivel (igual que el thumb del inventario).
+ */
 export function resolveProductMedia(
   product: MediaLike | null | undefined,
   primary: MediaLike,
   parent?: MediaLike | null,
 ): { photos: string[]; videoUrls: string[] } {
-  const catalog = resolveCatalogMedia(primary, parent);
-  const productPhotos = product?.photos ?? [];
-  const productVideos = product?.videoUrls ?? [];
-  return {
-    photos: productPhotos.length ? productPhotos : catalog.photos,
-    videoUrls: productVideos.length ? productVideos : catalog.videoUrls,
-  };
+  const videoUrls = firstVideos(product, primary, parent);
+  if (videoUrls.length) {
+    return { photos: [], videoUrls };
+  }
+  const photos = firstPhotos(product, primary, parent);
+  return { photos, videoUrls: [] };
+}
+
+export function mediaThumbFromLike(media: MediaLike): {
+  type: "video" | "photo" | null;
+  url: string | null;
+} {
+  const videos = media.videoUrls ?? [];
+  if (videos[0]) return { type: "video", url: videos[0] };
+  const photos = media.photos ?? [];
+  if (photos[0]) return { type: "photo", url: photos[0] };
+  return { type: null, url: null };
 }
 
 export function catalogEntryHasMedia(
@@ -45,11 +75,9 @@ export function applyCatalogMediaToProduct<T extends MediaLike>(
   parent?: MediaLike | null,
 ): T {
   const { photos, videoUrls } = resolveProductMedia(product, primary, parent);
-  const nextPhotos = product.photos?.length ? product.photos : photos;
-  const nextVideos = product.videoUrls?.length ? product.videoUrls : videoUrls;
   if (
-    nextPhotos === product.photos &&
-    nextVideos === product.videoUrls &&
+    photos === product.photos &&
+    videoUrls === product.videoUrls &&
     !photos.length &&
     !videoUrls.length
   ) {
@@ -57,7 +85,7 @@ export function applyCatalogMediaToProduct<T extends MediaLike>(
   }
   return {
     ...product,
-    photos: nextPhotos,
-    videoUrls: nextVideos,
+    photos,
+    videoUrls,
   };
 }

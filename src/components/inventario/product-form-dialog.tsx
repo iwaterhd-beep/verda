@@ -60,7 +60,7 @@ import {
   fetchClubJars,
   fetchJarItems,
 } from "@/lib/data/product-jars";
-import { resolveCatalogMedia } from "@/lib/catalog-media";
+import { resolveProductMedia } from "@/lib/catalog-media";
 import type { ProductGenetics, ProductOrigin } from "@/lib/product-strain";
 import type { FarmGenetic, JarItem, Product, ProductFarm, ProductJar } from "@/types";
 
@@ -178,24 +178,21 @@ export function ProductFormDialog({
     }
     if (catalogMediaSyncedRef.current) return;
 
-    const productPhotos = product?.photos ?? [];
-    const productVideos = product ? productVideoUrls(product) : [];
-    if (productPhotos.length > 0 || productVideos.length > 0) return;
-
     if (geneticId && farmGenetics.length) {
       const genetic = farmGenetics.find((g) => g.id === geneticId);
       if (!genetic) return;
       const farm = farms.find((f) => f.id === (genetic.farmId || farmId));
-      const media = resolveCatalogMedia(genetic, farm);
-      if (media.photos.length) {
-        setPhotos((prev) => (prev.length ? prev : media.photos));
-      }
-      if (media.videoUrls.length) {
-        setVideoUrls((prev) => (prev.length ? prev : media.videoUrls));
-      }
-      if (media.photos.length || media.videoUrls.length) {
-        catalogMediaSyncedRef.current = true;
-      }
+      const media = resolveProductMedia(
+        {
+          photos: product?.photos ?? [],
+          videoUrls: product ? productVideoUrls(product) : [],
+        },
+        genetic,
+        farm,
+      );
+      setPhotos(media.photos);
+      setVideoUrls(media.videoUrls);
+      catalogMediaSyncedRef.current = true;
       return;
     }
 
@@ -203,16 +200,17 @@ export function ProductFormDialog({
       const item = jarItems.find((i) => i.id === jarItemId);
       if (!item) return;
       const jar = jars.find((j) => j.id === (item.jarId || jarId));
-      const media = resolveCatalogMedia(item, jar);
-      if (media.photos.length) {
-        setPhotos((prev) => (prev.length ? prev : media.photos));
-      }
-      if (media.videoUrls.length) {
-        setVideoUrls((prev) => (prev.length ? prev : media.videoUrls));
-      }
-      if (media.photos.length || media.videoUrls.length) {
-        catalogMediaSyncedRef.current = true;
-      }
+      const media = resolveProductMedia(
+        {
+          photos: product?.photos ?? [],
+          videoUrls: product ? productVideoUrls(product) : [],
+        },
+        item,
+        jar,
+      );
+      setPhotos(media.photos);
+      setVideoUrls(media.videoUrls);
+      catalogMediaSyncedRef.current = true;
     }
   }, [
     open,
@@ -368,13 +366,9 @@ export function ProductFormDialog({
     setJarItemId(item?.id ?? "");
     if (!item) return;
     setName(item.name);
-    const media = resolveCatalogMedia(item, jar);
-    if (media.photos.length) {
-      setPhotos((prev) => (prev.length ? prev : media.photos));
-    }
-    if (media.videoUrls.length) {
-      setVideoUrls((prev) => (prev.length ? prev : media.videoUrls));
-    }
+    const media = resolveProductMedia(null, item, jar);
+    setPhotos(media.photos);
+    setVideoUrls(media.videoUrls);
     applyCatalogEntryFields(item);
   }
 
@@ -382,13 +376,9 @@ export function ProductFormDialog({
     setGeneticId(genetic?.id ?? "");
     if (!genetic) return;
     setName(genetic.name);
-    const media = resolveCatalogMedia(genetic, farm);
-    if (media.photos.length) {
-      setPhotos((prev) => (prev.length ? prev : media.photos));
-    }
-    if (media.videoUrls.length) {
-      setVideoUrls((prev) => (prev.length ? prev : media.videoUrls));
-    }
+    const media = resolveProductMedia(null, genetic, farm);
+    setPhotos(media.photos);
+    setVideoUrls(media.videoUrls);
     applyCatalogEntryFields(genetic);
   }
 

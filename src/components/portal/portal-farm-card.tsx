@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { farmHasMedia } from "@/lib/product-farms";
+import { mediaThumbFromLike } from "@/lib/catalog-media";
 import type { ProductFarm } from "@/types";
 
 interface PortalFarmCardProps {
@@ -20,23 +21,25 @@ export function PortalFarmCard({
   onSelect,
   geneticsCount,
 }: PortalFarmCardProps) {
-  const thumb = farm.photos[0] ?? null;
+  const thumb = mediaThumbFromLike(farm);
   const target = href ?? `/portal/menu?farm=${encodeURIComponent(farm.id)}`;
 
   const inner = (
     <Card className="overflow-hidden transition-colors hover:border-emerald-500/40">
       <CardContent className="flex items-center gap-3 p-3">
         <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-emerald-500/10">
-          {thumb ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={thumb} alt="" className="h-full w-full object-cover" />
-          ) : farm.videoUrls[0] ? (
+          {thumb.type === "video" && thumb.url ? (
             <video
-              src={farm.videoUrls[0]}
+              src={thumb.url}
+              autoPlay
+              loop
               muted
               playsInline
               className="h-full w-full object-cover"
             />
+          ) : thumb.type === "photo" && thumb.url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={thumb.url} alt="" className="h-full w-full object-cover" />
           ) : (
             <span className="grid h-full w-full place-items-center text-2xl">
               🌱
