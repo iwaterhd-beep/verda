@@ -46,6 +46,7 @@ import {
   fetchClubFarms,
   fetchFarmGenetics,
 } from "@/lib/data/product-farms";
+import { uploadCatalogVideosParallel } from "@/lib/data/product-media";
 import { geneticsOptions, originOptions } from "@/lib/product-strain";
 import type { FarmGenetic, ProductFarm } from "@/types";
 import type { ProductGenetics, ProductOrigin } from "@/lib/product-strain";
@@ -66,11 +67,13 @@ export function ManageFarmsDialog() {
   const [farmDescription, setFarmDescription] = React.useState("");
   const [farmPhotos, setFarmPhotos] = React.useState<string[]>([]);
   const [farmVideos, setFarmVideos] = React.useState<string[]>([]);
+  const [pendingFarmVideos, setPendingFarmVideos] = React.useState<File[]>([]);
 
   const [geneticName, setGeneticName] = React.useState("");
   const [geneticDescription, setGeneticDescription] = React.useState("");
   const [geneticPhotos, setGeneticPhotos] = React.useState<string[]>([]);
   const [geneticVideos, setGeneticVideos] = React.useState<string[]>([]);
+  const [pendingGeneticVideos, setPendingGeneticVideos] = React.useState<File[]>([]);
   const [geneticPrice, setGeneticPrice] = React.useState("0");
   const [geneticComparePrice, setGeneticComparePrice] = React.useState("");
   const [geneticType, setGeneticType] = React.useState<ProductGenetics | "">("");
@@ -105,6 +108,7 @@ export function ManageFarmsDialog() {
     setFarmDescription(farm?.description ?? "");
     setFarmPhotos(farm?.photos ?? []);
     setFarmVideos(farm?.videoUrls ?? []);
+    setPendingFarmVideos([]);
   }
 
   function resetGeneticForm(genetic?: FarmGenetic) {
@@ -112,6 +116,7 @@ export function ManageFarmsDialog() {
     setGeneticDescription(genetic?.description ?? "");
     setGeneticPhotos(genetic?.photos ?? []);
     setGeneticVideos(genetic?.videoUrls ?? []);
+    setPendingGeneticVideos([]);
     setGeneticPrice(String(genetic?.pricePerUnit ?? 0));
     setGeneticComparePrice(
       genetic?.compareAtPrice != null ? String(genetic.compareAtPrice) : "",
@@ -142,27 +147,64 @@ export function ManageFarmsDialog() {
 
     setSaving(true);
     try {
+      const isEditing = view.mode === "farm" && Boolean(view.farm.id);
+      let videoUrls = [...farmVideos];
+
+      if (isEditing && pendingFarmVideos.length > 0) {
+        const uploaded = await uploadCatalogVideosParallel(
+          `farms/${view.farm.id}`,
+          pendingFarmVideos,
+        );
+        if (uploaded.errors.length) {
+          toast.error("Algunos vídeos no se subieron", {
+            description: uploaded.errors[0],
+          });
+        }
+        videoUrls = [...videoUrls, ...uploaded.urls];
+      }
+
       const payload = {
         name: farmName.trim(),
         description: farmDescription.trim(),
         photos: farmPhotos,
-        videoUrls: farmVideos,
+        videoUrls: isEditing ? videoUrls : [],
       };
 
-      const res =
-        view.mode === "farm" && view.farm
-          ? await updateFarmAction(view.farm.id, payload)
-          : await createFarmAction(payload);
+      const res = isEditing
+        ? await updateFarmAction(view.farm.id, { ...payload, videoUrls })
+        : await createFarmAction(payload);
 
       if (res.error) {
         toast.error("No se pudo guardar", { description: res.error });
         return;
       }
 
-      toast.success(view.mode === "farm" ? "Farm actualizada" : "Farm creada");
+      let savedFarm = res.farm!;
+
+      if (!isEditing && pendingFarmVideos.length > 0) {
+        const uploaded = await uploadCatalogVideosParallel(
+          `farms/${savedFarm.id}`,
+          pendingFarmVideos,
+        );
+        if (uploaded.errors.length) {
+          toast.error("Farm creada, pero falló un vídeo", {
+            description: uploaded.errors[0],
+          });
+        }
+        if (uploaded.urls.length) {
+          const upd = await updateFarmAction(savedFarm.id, {
+            ...payload,
+            videoUrls: uploaded.urls,
+          });
+          if (upd.farm) savedFarm = upd.farm;
+        }
+      }
+
+      setPendingFarmVideos([]);
+      setFarmVideos(savedFarm.videoUrls);
+      toast.success(isEditing ? "Farm actualizada" : "Farm creada");
       await invalidate();
-      if (res.farm) setView({ mode: "farm", farm: res.farm });
-      else setView({ mode: "list" });
+      setView({ mode: "farm", farm: savedFarm });
     } finally {
       setSaving(false);
     }
@@ -210,12 +252,28 @@ export function ManageFarmsDialog() {
 
     setSaving(true);
     try {
+      const isEditing = Boolean(view.genetic?.id);
+      let videoUrls = [...geneticVideos];
+
+      if (isEditing && pendingGeneticVideos.length > 0) {
+        const uploaded = await uploadCatalogVideosParallel(
+          `farms/${view.farm.id}/genetics/${view.genetic!.id}`,
+          pendingGeneticVideos,
+        );
+        if (uploaded.errors.length) {
+          toast.error("Algunos vídeos no se subieron", {
+            description: uploaded.errors[0],
+          });
+        }
+        videoUrls = [...videoUrls, ...uploaded.urls];
+      }
+
       const payload = {
         farmId: view.farm.id,
         name: geneticName.trim(),
         description: geneticDescription.trim(),
         photos: geneticPhotos,
-        videoUrls: geneticVideos,
+        videoUrls: isEditing ? videoUrls : [],
         pricePerUnit: price,
         compareAtPrice:
           compareAtPrice != null && Number.isFinite(compareAtPrice)
@@ -227,8 +285,8 @@ export function ManageFarmsDialog() {
           thcPercent != null && Number.isFinite(thcPercent) ? thcPercent : null,
       };
 
-      const res = view.genetic
-        ? await updateGeneticAction(view.genetic.id, payload)
+      const res = isEditing
+        ? await updateGeneticAction(view.genetic!.id, payload)
         : await createGeneticAction(payload);
 
       if (res.error) {
@@ -236,7 +294,30 @@ export function ManageFarmsDialog() {
         return;
       }
 
-      toast.success(view.genetic ? "Genética actualizada" : "Genética creada");
+      let savedGenetic = res.genetic!;
+
+      if (!isEditing && pendingGeneticVideos.length > 0) {
+        const uploaded = await uploadCatalogVideosParallel(
+          `farms/${view.farm.id}/genetics/${savedGenetic.id}`,
+          pendingGeneticVideos,
+        );
+        if (uploaded.errors.length) {
+          toast.error("Genética creada, pero falló un vídeo", {
+            description: uploaded.errors[0],
+          });
+        }
+        if (uploaded.urls.length) {
+          const upd = await updateGeneticAction(savedGenetic.id, {
+            ...payload,
+            videoUrls: uploaded.urls,
+          });
+          if (upd.genetic) savedGenetic = upd.genetic;
+        }
+      }
+
+      setPendingGeneticVideos([]);
+      setGeneticVideos(savedGenetic.videoUrls);
+      toast.success(isEditing ? "Genética actualizada" : "Genética creada");
       await invalidate();
       setView({ mode: "farm", farm: view.farm });
     } finally {
@@ -418,7 +499,9 @@ export function ManageFarmsDialog() {
                 videoUrls={farmVideos}
                 onPhotosChange={setFarmPhotos}
                 onVideoUrlsChange={setFarmVideos}
-                storagePrefix={`farms/${view.farm.id || "new"}`}
+                storagePrefix={`farms/${view.farm.id || "draft"}`}
+                deferUpload={!view.farm.id}
+                onPendingVideosChange={setPendingFarmVideos}
               />
               <DialogFooter className="gap-2 sm:gap-0">
                 <Button type="submit" disabled={saving}>
@@ -624,7 +707,9 @@ export function ManageFarmsDialog() {
               videoUrls={geneticVideos}
               onPhotosChange={setGeneticPhotos}
               onVideoUrlsChange={setGeneticVideos}
-              storagePrefix={`farms/${view.farm.id}/genetics/${view.genetic?.id || "new"}`}
+              storagePrefix={`farms/${view.farm.id}/genetics/${view.genetic?.id || "draft"}`}
+              deferUpload={!view.genetic?.id}
+              onPendingVideosChange={setPendingGeneticVideos}
             />
             <DialogFooter>
               <Button type="submit" disabled={saving}>

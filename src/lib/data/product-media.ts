@@ -5,6 +5,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   MAX_PRODUCT_VIDEOS,
   MAX_VIDEO_BYTES,
+  isVideoFile,
   maxVideoSizeLabel,
 } from "@/lib/product-media-limits";
 import { storagePathFromPublicUrl } from "@/lib/product-media-storage";
@@ -125,8 +126,8 @@ export async function uploadProductVideoClient(
   file: File,
   onProgress?: (pct: number) => void,
 ): Promise<{ url?: string; error?: string }> {
-  if (!file.type.startsWith("video/")) {
-    return { error: "El archivo debe ser un vídeo." };
+  if (!isVideoFile(file)) {
+    return { error: "El archivo debe ser un vídeo (mp4, mov, webm…)." };
   }
   if (file.size > MAX_VIDEO_BYTES) {
     return { error: `El vídeo no puede superar ${maxVideoSizeLabel()}.` };
@@ -161,8 +162,8 @@ export async function uploadCatalogVideoClient(
   file: File,
   onProgress?: (pct: number) => void,
 ): Promise<{ url?: string; error?: string }> {
-  if (!file.type.startsWith("video/")) {
-    return { error: "El archivo debe ser un vídeo." };
+  if (!isVideoFile(file)) {
+    return { error: "El archivo debe ser un vídeo (mp4, mov, webm…)." };
   }
   if (file.size > MAX_VIDEO_BYTES) {
     return { error: `El vídeo no puede superar ${maxVideoSizeLabel()}.` };
@@ -189,6 +190,22 @@ export async function uploadCatalogVideoClient(
   } = auth.supabase.storage.from(BUCKET).getPublicUrl(path);
 
   return { url: publicUrl };
+}
+
+export async function uploadCatalogVideosParallel(
+  storagePrefix: string,
+  files: File[],
+): Promise<{ urls: string[]; errors: string[] }> {
+  const urls: string[] = [];
+  const errors: string[] = [];
+
+  for (const file of files) {
+    const result = await uploadCatalogVideoClient(storagePrefix, file);
+    if (result.error) errors.push(result.error);
+    else if (result.url) urls.push(result.url);
+  }
+
+  return { urls, errors };
 }
 
 export async function uploadProductVideosParallel(
