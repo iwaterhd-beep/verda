@@ -11,7 +11,7 @@ import { MemberQrCard } from "@/components/portal/member-qr-card";
 import { useQuery } from "@tanstack/react-query";
 import { currentMember } from "@/lib/current-member";
 import { fetchMyMember } from "@/lib/data/members";
-import { fetchClubProducts } from "@/lib/data/products";
+import { fetchPortalProducts } from "@/lib/data/products";
 import { formatCurrency, walletBalanceTone, cn } from "@/lib/utils";
 
 export default function PortalHomePage() {
@@ -19,7 +19,7 @@ export default function PortalHomePage() {
   const m = data ?? currentMember;
   const { data: menuProducts = [] } = useQuery({
     queryKey: ["portal-products"],
-    queryFn: fetchClubProducts,
+    queryFn: fetchPortalProducts,
   });
   const featured = menuProducts.filter((p) => p.stock > 0).slice(0, 3);
 

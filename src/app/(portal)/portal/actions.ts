@@ -62,6 +62,27 @@ export async function placeOrderAction(
     };
   }
 
+  const productIds = [...new Set(items.map((i) => i.productId))];
+  const { data: catalogRows, error: catalogErr } = await supabase
+    .from("products")
+    .select("id, hidden_from_members")
+    .eq("club_id", member.club_id)
+    .in("id", productIds);
+  if (catalogErr) {
+    return { error: "No se pudo validar el pedido." };
+  }
+  const hiddenIds = new Set(
+    (catalogRows ?? [])
+      .filter((row) => row.hidden_from_members)
+      .map((row) => row.id),
+  );
+  if (productIds.some((id) => hiddenIds.has(id))) {
+    return { error: "Un producto del pedido ya no está disponible." };
+  }
+  if ((catalogRows ?? []).length !== productIds.length) {
+    return { error: "Un producto del pedido ya no está disponible." };
+  }
+
   const wallet = Number(member.wallet_balance ?? 0);
 
   const admin = createAdminClient();

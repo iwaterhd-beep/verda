@@ -90,6 +90,8 @@ export interface Product {
   genetics?: "INDICA" | "SATIVA" | "HYBRID" | null;
   origin?: "SPAIN" | "CALIFORNIA" | "NETHERLANDS" | "THAILAND" | "CANADA" | null;
   description?: string | null;
+  /** No visible en el menú del portal; solo staff puede dispensar. */
+  hiddenFromMembers?: boolean;
 }
 
 export interface Sale {

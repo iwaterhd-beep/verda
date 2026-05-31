@@ -95,6 +95,7 @@ export interface ProductInput {
   genetics?: Product["genetics"];
   origin?: Product["origin"];
   description?: string;
+  hiddenFromMembers?: boolean;
 }
 
 export interface ProductActionResult {
@@ -218,12 +219,13 @@ function rowFromInput(
     photos: input.photos ?? [],
     video_urls: input.videoUrls ?? [],
     video_url: input.videoUrls?.[0] ?? null,
+    hidden_from_members: Boolean(input.hiddenFromMembers),
     ...strainFieldsFromInput(input, isCannabis && !isPack),
   };
 }
 
 function isMissingOptionalColumnError(message: string) {
-  return /photos|video_url|video_urls|grower|extractor|thc_percent|genetics|origin|description|is_pack/i.test(
+  return /photos|video_url|video_urls|grower|extractor|thc_percent|genetics|origin|description|is_pack|hidden_from_members/i.test(
     message,
   );
 }
@@ -279,6 +281,7 @@ function baseRowFromInput(
     genetics: _ge,
     origin: _o,
     description: _d,
+    hidden_from_members: _hfm,
     ...base
   } = row;
   return base;
@@ -450,6 +453,29 @@ export async function updateProductAction(
   }
 
   return { id: productId };
+}
+
+export async function toggleProductHiddenAction(
+  productId: string,
+  hidden: boolean,
+): Promise<{ error?: string }> {
+  const auth = await staffClubId();
+  if ("error" in auth) return { error: auth.error };
+
+  let { error } = await auth.supabase
+    .from("products")
+    .update({ hidden_from_members: hidden })
+    .eq("club_id", auth.clubId)
+    .eq("id", productId);
+
+  if (error && isMissingOptionalColumnError(error.message)) {
+    return {
+      error:
+        "Falta configurar la base de datos. Ejecuta supabase/product-hidden.sql.",
+    };
+  }
+  if (error) return { error: error.message };
+  return {};
 }
 
 export async function deleteProductAction(

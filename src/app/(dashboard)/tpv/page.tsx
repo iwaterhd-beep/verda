@@ -1,33 +1,55 @@
 "use client";
 
 import * as React from "react";
-import { Minus, Plus, Bitcoin, Wallet, Banknote, Trash2, Receipt } from "lucide-react";
+import { Minus, Plus, Bitcoin, Wallet, Banknote, Trash2, Receipt, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { products, sales } from "@/lib/mock-data";
+import { sales } from "@/lib/mock-data";
+import { fetchClubProducts } from "@/lib/data/products";
 import { formatCurrency, cn } from "@/lib/utils";
+import type { Product } from "@/types";
 
 interface CartLine {
   id: string;
   name: string;
   price: number;
   qty: number;
+  unit: Product["unit"];
 }
 
 export default function TpvPage() {
   const [cart, setCart] = React.useState<CartLine[]>([]);
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ["club-products"],
+    queryFn: fetchClubProducts,
+  });
 
-  function add(id: string, name: string, price: number) {
+  function add(product: Product) {
+    if (product.stock <= 0) {
+      toast.error("Sin stock");
+      return;
+    }
     setCart((c) => {
-      const found = c.find((l) => l.id === id);
-      if (found) return c.map((l) => (l.id === id ? { ...l, qty: l.qty + 1 } : l));
-      return [...c, { id, name, price, qty: 1 }];
+      const found = c.find((l) => l.id === product.id);
+      if (found) return c.map((l) => (l.id === product.id ? { ...l, qty: l.qty + 1 } : l));
+      return [
+        ...c,
+        {
+          id: product.id,
+          name: product.name,
+          price: product.pricePerUnit,
+          qty: 1,
+          unit: product.unit,
+        },
+      ];
     });
   }
+
   function dec(id: string) {
     setCart((c) =>
       c.flatMap((l) =>
@@ -35,6 +57,7 @@ export default function TpvPage() {
       ),
     );
   }
+
   const total = cart.reduce((a, l) => a + l.price * l.qty, 0);
 
   function checkout(method: string) {
@@ -49,32 +72,52 @@ export default function TpvPage() {
     <div className="mx-auto max-w-[1400px]">
       <PageHeader
         title="TPV"
-        description="Punto de venta rápido, tickets, métodos de pago y estadísticas."
+        description="Punto de venta rápido. Incluye productos ocultos al portal de socios."
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {products.length === 0 ? (
+            {isLoading ? (
+              <div className="col-span-full flex justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : products.length === 0 ? (
               <div className="col-span-full rounded-2xl border border-dashed border-border py-12 text-center text-sm text-muted-foreground">
                 No hay productos. Añade inventario en la sección Inventario.
               </div>
             ) : (
-              products.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => add(p.id, p.name, p.pricePerUnit)}
-                  className="group flex flex-col items-start rounded-2xl border border-border bg-card p-4 text-left transition-all hover:border-primary/40 hover:shadow-glow active:scale-[0.98]"
-                >
-                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
-                    <Plus className="h-5 w-5" />
-                  </span>
-                  <p className="mt-3 font-medium leading-tight">{p.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatCurrency(p.pricePerUnit)}/{p.unit}
-                  </p>
-                </button>
-              ))
+              products.map((p) => {
+                const soldOut = p.stock <= 0;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    disabled={soldOut}
+                    onClick={() => add(p)}
+                    className={cn(
+                      "group flex flex-col items-start rounded-2xl border border-border bg-card p-4 text-left transition-all hover:border-primary/40 hover:shadow-glow active:scale-[0.98]",
+                      soldOut && "cursor-not-allowed opacity-50 hover:border-border hover:shadow-none",
+                    )}
+                  >
+                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/20">
+                      <Plus className="h-5 w-5" />
+                    </span>
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      <p className="font-medium leading-tight">{p.name}</p>
+                      {p.hiddenFromMembers && (
+                        <Badge variant="secondary" className="h-5 text-[10px]">
+                          Oculto
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {formatCurrency(p.pricePerUnit)}/{p.unit}
+                      {soldOut ? " · Agotado" : ""}
+                    </p>
+                  </button>
+                );
+              })
             )}
           </div>
 
@@ -89,25 +132,25 @@ export default function TpvPage() {
                 </p>
               ) : (
                 sales.map((s) => (
-                <div
-                  key={s.id}
-                  className="flex items-center gap-3 rounded-xl border border-border/60 p-3"
-                >
-                  <Receipt className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">
-                      {s.ticket} · {s.memberName}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {s.items} artículos · {s.paymentMethod}
-                    </p>
+                  <div
+                    key={s.id}
+                    className="flex items-center gap-3 rounded-xl border border-border/60 p-3"
+                  >
+                    <Receipt className="h-4 w-4 text-muted-foreground" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">
+                        {s.ticket} · {s.memberName}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {s.items} artículos · {s.paymentMethod}
+                      </p>
+                    </div>
+                    {s.status === "REFUNDED" ? (
+                      <Badge variant="destructive">Devuelto</Badge>
+                    ) : (
+                      <span className="font-medium">{formatCurrency(s.total)}</span>
+                    )}
                   </div>
-                  {s.status === "REFUNDED" ? (
-                    <Badge variant="destructive">Devuelto</Badge>
-                  ) : (
-                    <span className="font-medium">{formatCurrency(s.total)}</span>
-                  )}
-                </div>
                 ))
               )}
             </CardContent>
@@ -135,7 +178,7 @@ export default function TpvPage() {
                   <div className="flex-1">
                     <p className="text-sm font-medium">{l.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {formatCurrency(l.price)}
+                      {formatCurrency(l.price)}/{l.unit}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -152,7 +195,10 @@ export default function TpvPage() {
                       variant="outline"
                       size="icon"
                       className="h-7 w-7"
-                      onClick={() => add(l.id, l.name, l.price)}
+                      onClick={() => {
+                        const product = products.find((p) => p.id === l.id);
+                        if (product) add(product);
+                      }}
                     >
                       <Plus className="h-3 w-3" />
                     </Button>

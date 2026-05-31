@@ -82,6 +82,9 @@ export function ProductFormDialog({
   );
   const [unit, setUnit] = React.useState<Product["unit"]>(product?.unit ?? "g");
   const [isPack, setIsPack] = React.useState(product?.isPack ?? false);
+  const [hiddenFromMembers, setHiddenFromMembers] = React.useState(
+    product?.hiddenFromMembers ?? false,
+  );
   const [packItems, setPackItems] = React.useState<PackItemDraft[]>(() =>
     packItemsFromProduct(product),
   );
@@ -115,6 +118,7 @@ export function ProductFormDialog({
     setCategory(product?.category ?? "FLOR");
     setUnit(product?.unit === "pack" ? "g" : (product?.unit ?? "g"));
     setIsPack(product?.isPack ?? false);
+    setHiddenFromMembers(product?.hiddenFromMembers ?? false);
     setPackItems(packItemsFromProduct(product));
     setGenetics(product?.genetics ?? "");
     setOrigin(product?.origin ?? "");
@@ -282,6 +286,7 @@ export function ProductFormDialog({
       stock,
       unit: isPack ? "pack" as const : unit,
       isPack,
+      hiddenFromMembers,
       packItems: isPack ? packItems : undefined,
       lowStockThreshold,
       pricePerUnit,
@@ -419,6 +424,24 @@ export function ProductFormDialog({
               className="h-4 w-4 accent-primary"
               checked={isPack}
               onChange={(e) => setIsPack(e.target.checked)}
+            />
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl border border-border/60 bg-secondary/20 px-3 py-2.5">
+            <div>
+              <Label htmlFor="hiddenFromMembers" className="cursor-pointer">
+                Oculto para socios
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                No aparece en el menú del portal. Solo tú puedes dispensarlo (TPV o pedidos).
+              </p>
+            </div>
+            <input
+              id="hiddenFromMembers"
+              type="checkbox"
+              className="h-4 w-4 accent-primary"
+              checked={hiddenFromMembers}
+              onChange={(e) => setHiddenFromMembers(e.target.checked)}
             />
           </div>
 

@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { ProductCard } from "@/components/portal/product-card";
 import { CartBar } from "@/components/portal/cart-bar";
-import { fetchClubProducts } from "@/lib/data/products";
+import { fetchPortalProducts } from "@/lib/data/products";
 import { fetchClubCategories } from "@/lib/data/product-categories";
 import { getCategoryDisplay } from "@/lib/product-meta";
 import { useCart } from "@/store/use-cart";
@@ -19,7 +19,7 @@ export default function MenuPage() {
 
   const { data: products = [], isLoading, error } = useQuery({
     queryKey: ["portal-products"],
-    queryFn: fetchClubProducts,
+    queryFn: fetchPortalProducts,
   });
 
   const { data: categories = [] } = useQuery({

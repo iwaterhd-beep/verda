@@ -25,6 +25,7 @@ type Row = {
   genetics?: Product["genetics"];
   origin?: Product["origin"];
   description?: string | null;
+  hidden_from_members?: boolean | null;
 };
 
 type PackItemRow = {
@@ -61,6 +62,7 @@ function toProduct(r: Row, packItems?: PackItem[]): Product {
     genetics: r.genetics ?? null,
     origin: r.origin ?? null,
     description: r.description ?? null,
+    hiddenFromMembers: Boolean(r.hidden_from_members),
   };
 }
 
@@ -104,10 +106,12 @@ export async function fetchClubProducts(): Promise<Product[]> {
   return rows.map((r) => toProduct(r, packMap.get(r.id)));
 }
 
-/** Menú del portal: solo productos con stock visible para socios. */
+/** Menú del portal: socios no ven productos ocultos ni agotados sin media. */
 export async function fetchPortalProducts(): Promise<Product[]> {
   const products = await fetchClubProducts();
-  return products.filter((p) => p.stock > 0 || productHasMedia(p));
+  return products.filter(
+    (p) => !p.hiddenFromMembers && (p.stock > 0 || productHasMedia(p)),
+  );
 }
 
 /** Productos estándar disponibles como componentes de un pack. */

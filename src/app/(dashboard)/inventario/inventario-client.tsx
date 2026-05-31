@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Package, AlertTriangle, Loader2, Pencil, Trash2 } from "lucide-react";
+import { Package, AlertTriangle, Loader2, Pencil, Trash2, Eye, EyeOff } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +23,7 @@ import {
   EditProductDialog,
 } from "@/components/inventario/product-form-dialog";
 import { DeleteProductDialog } from "@/components/inventario/delete-product-dialog";
+import { toggleProductHiddenAction } from "@/app/(dashboard)/inventario/actions";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { getCategoryDisplay } from "@/lib/product-meta";
 import { productMediaThumb } from "@/components/portal/product-media-gallery";
@@ -32,6 +34,21 @@ export function InventarioClient() {
   const queryClient = useQueryClient();
   const [editProduct, setEditProduct] = React.useState<Product | null>(null);
   const [deleteProduct, setDeleteProduct] = React.useState<Product | null>(null);
+  const [togglingHiddenId, setTogglingHiddenId] = React.useState<string | null>(null);
+
+  async function toggleHidden(product: Product) {
+    setTogglingHiddenId(product.id);
+    const next = !product.hiddenFromMembers;
+    const res = await toggleProductHiddenAction(product.id, next);
+    setTogglingHiddenId(null);
+    if (res.error) {
+      toast.error("No se pudo actualizar", { description: res.error });
+      return;
+    }
+    toast.success(next ? "Producto oculto para socios" : "Producto visible en el portal");
+    void queryClient.invalidateQueries({ queryKey: ["club-products"] });
+    void queryClient.invalidateQueries({ queryKey: ["portal-products"] });
+  }
 
   const { data: products = [], isLoading, error } = useQuery({
     queryKey: ["club-products"],
@@ -125,7 +142,7 @@ export function InventarioClient() {
                   <TableHead>Stock</TableHead>
                   <TableHead className="hidden lg:table-cell">Caducidad</TableHead>
                   <TableHead className="text-right">Precio</TableHead>
-                  <TableHead className="w-[100px] pr-6 text-right">Acciones</TableHead>
+                  <TableHead className="w-[132px] pr-6 text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -175,6 +192,11 @@ export function InventarioClient() {
                                 {p.isPack && (
                                   <Badge variant="outline" className="h-5 text-[10px]">
                                     Pack
+                                  </Badge>
+                                )}
+                                {p.hiddenFromMembers && (
+                                  <Badge variant="secondary" className="h-5 text-[10px]">
+                                    Oculto
                                   </Badge>
                                 )}
                               </div>
@@ -231,6 +253,26 @@ export function InventarioClient() {
                         </TableCell>
                         <TableCell className="pr-6 text-right">
                           <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              disabled={togglingHiddenId === p.id}
+                              title={
+                                p.hiddenFromMembers
+                                  ? "Mostrar a socios"
+                                  : "Ocultar a socios"
+                              }
+                              onClick={() => void toggleHidden(p)}
+                            >
+                              {togglingHiddenId === p.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : p.hiddenFromMembers ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
