@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Search, Loader2, Sprout } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { ProductCard } from "@/components/portal/product-card";
@@ -15,14 +16,21 @@ import {
   fetchPortalFarmGenetics,
 } from "@/lib/data/product-farms";
 import { getCategoryDisplay, categoryChipStyle } from "@/lib/product-meta";
+import { PortalFarmCard } from "@/components/portal/portal-farm-card";
 import { useCart } from "@/store/use-cart";
 import { cn } from "@/lib/utils";
 
 export default function MenuPage() {
+  const searchParams = useSearchParams();
   const [query, setQuery] = React.useState("");
   const [category, setCategory] = React.useState<string>("ALL");
   const [farm, setFarm] = React.useState<string>("ALL");
   const cartCount = useCart((s) => s.count());
+
+  React.useEffect(() => {
+    const fromUrl = searchParams.get("farm");
+    if (fromUrl) setFarm(fromUrl);
+  }, [searchParams]);
 
   const { data: products = [], isLoading, error } = useQuery({
     queryKey: ["portal-products"],
@@ -55,11 +63,13 @@ export default function MenuPage() {
     products.some((p) => p.category === c.id),
   );
 
-  const availableFarms = farms.filter(
-    (f) =>
-      allGenetics.some((g) => g.farmId === f.id) ||
-      products.some((p) => p.farmId === f.id),
-  );
+  const geneticsByFarm = React.useMemo(() => {
+    const map = new Map<string, number>();
+    for (const g of allGenetics) {
+      map.set(g.farmId, (map.get(g.farmId) ?? 0) + 1);
+    }
+    return map;
+  }, [allGenetics]);
 
   const filteredProducts = products.filter((p) => {
     const matchesQuery = p.name.toLowerCase().includes(query.toLowerCase());
@@ -74,7 +84,6 @@ export default function MenuPage() {
     return matchesQuery && matchesFarm;
   });
 
-  const showFarmCatalog = farm !== "ALL" || availableFarms.length > 0;
   const useGeneticView = farm !== "ALL";
 
   const farmsById = Object.fromEntries(farms.map((f) => [f.id, f.name]));
@@ -124,7 +133,7 @@ export default function MenuPage() {
         </div>
       </div>
 
-      {showFarmCatalog && availableFarms.length > 0 && (
+      {farms.length > 0 && (
         <div className="space-y-2">
           <p className="flex items-center gap-1.5 px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             <Sprout className="h-3 w-3" />
@@ -138,7 +147,7 @@ export default function MenuPage() {
             >
               Todas
             </Chip>
-            {availableFarms.map((f) => (
+            {farms.map((f) => (
               <Chip
                 key={f.id}
                 active={farm === f.id}
@@ -147,6 +156,22 @@ export default function MenuPage() {
               >
                 🌱 {f.name}
               </Chip>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {farm === "ALL" && farms.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Explorar por farm</p>
+          <div className="space-y-2">
+            {farms.map((f) => (
+              <PortalFarmCard
+                key={f.id}
+                farm={f}
+                geneticsCount={geneticsByFarm.get(f.id) ?? 0}
+                onSelect={setFarm}
+              />
             ))}
           </div>
         </div>
@@ -162,6 +187,11 @@ export default function MenuPage() {
         </p>
       ) : useGeneticView ? (
         <div className="space-y-3">
+          {farmsById[farm] && (
+            <p className="text-sm text-muted-foreground">
+              Genéticas de <span className="font-medium text-foreground">{farmsById[farm]}</span>
+            </p>
+          )}
           {filteredGenetics.map((g) => {
             const linked = products.find((p) => p.id === g.productId);
             return (

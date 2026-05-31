@@ -12,6 +12,8 @@ import { useQuery } from "@tanstack/react-query";
 import { currentMember } from "@/lib/current-member";
 import { fetchMyMember } from "@/lib/data/members";
 import { fetchPortalProducts } from "@/lib/data/products";
+import { fetchClubFarms, fetchFarmGenetics } from "@/lib/data/product-farms";
+import { PortalFarmCard } from "@/components/portal/portal-farm-card";
 import { formatCurrency, walletBalanceTone, cn } from "@/lib/utils";
 
 export default function PortalHomePage() {
@@ -21,7 +23,20 @@ export default function PortalHomePage() {
     queryKey: ["portal-products"],
     queryFn: fetchPortalProducts,
   });
+  const { data: farms = [] } = useQuery({
+    queryKey: ["club-farms"],
+    queryFn: fetchClubFarms,
+  });
+  const { data: genetics = [] } = useQuery({
+    queryKey: ["farm-genetics-all"],
+    queryFn: () => fetchFarmGenetics(),
+  });
   const featured = menuProducts.filter((p) => p.stock > 0).slice(0, 3);
+
+  const geneticsByFarm = genetics.reduce<Map<string, number>>((map, g) => {
+    map.set(g.farmId, (map.get(g.farmId) ?? 0) + 1);
+    return map;
+  }, new Map());
 
   return (
     <div className="space-y-5">
@@ -79,6 +94,29 @@ export default function PortalHomePage() {
           </CardContent>
         </Card>
       </Link>
+
+      {farms.length > 0 && (
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-semibold">Farms</h2>
+            <Link
+              href="/portal/menu"
+              className="text-sm text-primary hover:underline"
+            >
+              Ver menú
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {farms.map((farm) => (
+              <PortalFarmCard
+                key={farm.id}
+                farm={farm}
+                geneticsCount={geneticsByFarm.get(farm.id) ?? 0}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Destacados */}
       <div>
