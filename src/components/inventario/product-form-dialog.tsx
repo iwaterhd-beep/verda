@@ -52,8 +52,17 @@ import {
   type PackItemDraft,
 } from "@/components/inventario/product-pack-fields";
 import { fetchClubCategories } from "@/lib/data/product-categories";
+import {
+  fetchClubFarms,
+  fetchFarmGenetics,
+} from "@/lib/data/product-farms";
+import {
+  fetchClubJars,
+  fetchJarItems,
+} from "@/lib/data/product-jars";
+import { resolveCatalogMedia } from "@/lib/catalog-media";
 import type { ProductGenetics, ProductOrigin } from "@/lib/product-strain";
-import type { FarmGenetic, JarItem, Product } from "@/types";
+import type { FarmGenetic, JarItem, Product, ProductFarm, ProductJar } from "@/types";
 
 const MAX_PHOTOS = MAX_PRODUCT_PHOTOS;
 
@@ -117,6 +126,27 @@ export function ProductFormDialog({
     queryFn: fetchClubCategories,
     enabled: open,
   });
+  const { data: farms = [] } = useQuery({
+    queryKey: ["club-farms"],
+    queryFn: fetchClubFarms,
+    enabled: open && Boolean(farmId || geneticId),
+  });
+  const { data: farmGenetics = [] } = useQuery({
+    queryKey: ["farm-genetics", farmId],
+    queryFn: () => fetchFarmGenetics(farmId),
+    enabled: open && Boolean(farmId),
+  });
+  const { data: jars = [] } = useQuery({
+    queryKey: ["club-jars"],
+    queryFn: fetchClubJars,
+    enabled: open && Boolean(jarId || jarItemId),
+  });
+  const { data: jarItems = [] } = useQuery({
+    queryKey: ["jar-items", jarId],
+    queryFn: () => fetchJarItems(jarId),
+    enabled: open && Boolean(jarId),
+  });
+  const catalogMediaSyncedRef = React.useRef(false);
   const categoryOptions = productCategoriesFromList(categories);
 
   React.useEffect(() => {
@@ -140,6 +170,54 @@ export function ProductFormDialog({
       return [];
     });
   }, [open, product]);
+
+  React.useEffect(() => {
+    if (!open) {
+      catalogMediaSyncedRef.current = false;
+      return;
+    }
+    if (catalogMediaSyncedRef.current) return;
+
+    const productPhotos = product?.photos ?? [];
+    const productVideos = product ? productVideoUrls(product) : [];
+    if (productPhotos.length > 0 || productVideos.length > 0) return;
+
+    if (geneticId && farmGenetics.length) {
+      const genetic = farmGenetics.find((g) => g.id === geneticId);
+      if (!genetic) return;
+      const farm = farms.find((f) => f.id === (genetic.farmId || farmId));
+      const media = resolveCatalogMedia(genetic, farm);
+      if (media.photos.length) setPhotos(media.photos);
+      if (media.videoUrls.length) setVideoUrls(media.videoUrls);
+      if (media.photos.length || media.videoUrls.length) {
+        catalogMediaSyncedRef.current = true;
+      }
+      return;
+    }
+
+    if (jarItemId && jarItems.length) {
+      const item = jarItems.find((i) => i.id === jarItemId);
+      if (!item) return;
+      const jar = jars.find((j) => j.id === (item.jarId || jarId));
+      const media = resolveCatalogMedia(item, jar);
+      if (media.photos.length) setPhotos(media.photos);
+      if (media.videoUrls.length) setVideoUrls(media.videoUrls);
+      if (media.photos.length || media.videoUrls.length) {
+        catalogMediaSyncedRef.current = true;
+      }
+    }
+  }, [
+    open,
+    product,
+    geneticId,
+    jarItemId,
+    farmId,
+    jarId,
+    farmGenetics,
+    farms,
+    jarItems,
+    jars,
+  ]);
 
   React.useEffect(
     () => () => {
@@ -243,30 +321,59 @@ export function ProductFormDialog({
     });
   }
 
-  function applyJarItemLink(item: JarItem | null) {
-    setJarItemId(item?.id ?? "");
-    if (!item) return;
-    setName(item.name);
-    if (item.photos.length) setPhotos(item.photos);
-    if (item.videoUrls.length) setVideoUrls(item.videoUrls);
-    setGenetics(item.genetics ?? "");
-    setOrigin(item.origin ?? "");
+  function applyCatalogEntryFields(entry: {
+    pricePerUnit: number;
+    compareAtPrice?: number | null;
+    genetics?: FarmGenetic["genetics"];
+    thcPercent?: number | null;
+    origin?: FarmGenetic["origin"];
+    description?: string | null;
+  }) {
+    setGenetics(entry.genetics ?? "");
+    setOrigin(entry.origin ?? "");
     if (priceInputRef.current) {
-      priceInputRef.current.value = String(item.pricePerUnit);
+      priceInputRef.current.value = String(entry.pricePerUnit);
+    }
+    const compareEl = document.getElementById(
+      "compareAtPrice",
+    ) as HTMLInputElement | null;
+    if (compareEl) {
+      compareEl.value =
+        entry.compareAtPrice != null && entry.compareAtPrice > 0
+          ? String(entry.compareAtPrice)
+          : "";
+    }
+    const thcEl = document.getElementById("thcPercent") as HTMLInputElement | null;
+    if (thcEl) {
+      thcEl.value =
+        entry.thcPercent != null ? String(entry.thcPercent) : "";
+    }
+    const descEl = document.getElementById(
+      "description",
+    ) as HTMLTextAreaElement | null;
+    if (descEl && entry.description) {
+      descEl.value = entry.description;
     }
   }
 
-  function applyGeneticLink(genetic: FarmGenetic | null) {
+  function applyJarItemLink(item: JarItem | null, jar?: ProductJar | null) {
+    setJarItemId(item?.id ?? "");
+    if (!item) return;
+    setName(item.name);
+    const media = resolveCatalogMedia(item, jar);
+    if (media.photos.length) setPhotos(media.photos);
+    if (media.videoUrls.length) setVideoUrls(media.videoUrls);
+    applyCatalogEntryFields(item);
+  }
+
+  function applyGeneticLink(genetic: FarmGenetic | null, farm?: ProductFarm | null) {
     setGeneticId(genetic?.id ?? "");
     if (!genetic) return;
     setName(genetic.name);
-    if (genetic.photos.length) setPhotos(genetic.photos);
-    if (genetic.videoUrls.length) setVideoUrls(genetic.videoUrls);
-    setGenetics(genetic.genetics ?? "");
-    setOrigin(genetic.origin ?? "");
-    if (priceInputRef.current) {
-      priceInputRef.current.value = String(genetic.pricePerUnit);
-    }
+    const media = resolveCatalogMedia(genetic, farm);
+    if (media.photos.length) setPhotos(media.photos);
+    if (media.videoUrls.length) setVideoUrls(media.videoUrls);
+    applyCatalogEntryFields(genetic);
   }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -643,9 +750,9 @@ export function ProductFormDialog({
               farmId={farmId}
               geneticId={geneticId}
               onFarmChange={setFarmId}
-              onGeneticChange={(g) => {
+              onGeneticChange={(g, farm) => {
                 if (g) setFarmId(g.farmId);
-                applyGeneticLink(g);
+                applyGeneticLink(g, farm);
               }}
               enabled={open}
             />
@@ -656,9 +763,9 @@ export function ProductFormDialog({
               jarId={jarId}
               jarItemId={jarItemId}
               onJarChange={setJarId}
-              onItemChange={(item) => {
+              onItemChange={(item, jar) => {
                 if (item) setJarId(item.jarId);
-                applyJarItemLink(item);
+                applyJarItemLink(item, jar);
               }}
               enabled={open}
             />

@@ -145,7 +145,9 @@ export function MenuPageClient() {
   const useJarItemView = jar !== "ALL";
 
   const farmsById = Object.fromEntries(farms.map((f) => [f.id, f.name]));
+  const farmById = Object.fromEntries(farms.map((f) => [f.id, f]));
   const jarsById = Object.fromEntries(jars.map((j) => [j.id, j.name]));
+  const jarById = Object.fromEntries(jars.map((j) => [j.id, j]));
 
   return (
     <div
@@ -305,6 +307,7 @@ export function MenuPageClient() {
                 key={item.id}
                 item={item}
                 jarName={jarsById[item.jarId] ?? "Jar"}
+                jar={jarById[item.jarId]}
                 product={linked}
               />
             );
@@ -330,6 +333,7 @@ export function MenuPageClient() {
                 key={g.id}
                 genetic={g}
                 farmName={farmsById[g.farmId] ?? "Farm"}
+                farm={farmById[g.farmId]}
                 product={linked}
               />
             );

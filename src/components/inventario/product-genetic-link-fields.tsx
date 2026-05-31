@@ -14,13 +14,13 @@ import {
   fetchClubFarms,
   fetchFarmGenetics,
 } from "@/lib/data/product-farms";
-import type { FarmGenetic } from "@/types";
+import type { FarmGenetic, ProductFarm } from "@/types";
 
 interface ProductGeneticLinkFieldsProps {
   farmId: string;
   geneticId: string;
   onFarmChange: (farmId: string) => void;
-  onGeneticChange: (genetic: FarmGenetic | null) => void;
+  onGeneticChange: (genetic: FarmGenetic | null, farm?: ProductFarm | null) => void;
   enabled?: boolean;
 }
 
@@ -82,7 +82,9 @@ export function ProductGeneticLinkFields({
           onValueChange={(v) => {
             const genetic =
               genetics.find((g) => g.id === v) ?? null;
-            onGeneticChange(v === "none" ? null : genetic);
+            const farm =
+              genetic ? farms.find((f) => f.id === genetic.farmId) ?? null : null;
+            onGeneticChange(v === "none" ? null : genetic, farm);
           }}
         >
           <SelectTrigger>

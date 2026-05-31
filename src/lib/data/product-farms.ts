@@ -5,6 +5,7 @@ import {
   listPortalFarmsAction,
   listPortalGeneticsAction,
 } from "@/app/(dashboard)/inventario/farm-actions";
+import { resolveCatalogMedia } from "@/lib/catalog-media";
 import type { FarmGenetic, Product, ProductFarm } from "@/types";
 
 type FarmRow = {
@@ -144,7 +145,9 @@ export async function fetchPortalFarmGenetics(
 export function geneticToProductPreview(
   genetic: FarmGenetic,
   product?: Product | null,
+  farm?: ProductFarm | null,
 ): Product {
+  const { photos, videoUrls } = resolveCatalogMedia(genetic, farm);
   return {
     id: product?.id ?? genetic.id,
     name: genetic.name,
@@ -157,10 +160,8 @@ export function geneticToProductPreview(
     compareAtPrice: genetic.compareAtPrice,
     batch: product?.batch ?? "—",
     expiresAt: product?.expiresAt ?? null,
-    photos: genetic.photos.length ? genetic.photos : (product?.photos ?? []),
-    videoUrls: genetic.videoUrls.length
-      ? genetic.videoUrls
-      : (product?.videoUrls ?? []),
+    photos: photos.length ? photos : (product?.photos ?? []),
+    videoUrls: videoUrls.length ? videoUrls : (product?.videoUrls ?? []),
     grower: product?.grower ?? null,
     thcPercent: genetic.thcPercent ?? product?.thcPercent ?? null,
     genetics: genetic.genetics ?? product?.genetics ?? null,

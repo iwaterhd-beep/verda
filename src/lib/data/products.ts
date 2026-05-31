@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { enrichProductsWithCatalogMedia } from "@/lib/data/catalog-product-media";
 import { productHasMedia } from "@/lib/data/product-media";
 import type { PackItem, Product } from "@/types";
 
@@ -114,7 +115,8 @@ export async function fetchClubProducts(): Promise<Product[]> {
 
   const rows = data as Row[];
   const packMap = await fetchPackItemsMap(rows);
-  return rows.map((r) => toProduct(r, packMap.get(r.id)));
+  const products = rows.map((r) => toProduct(r, packMap.get(r.id)));
+  return enrichProductsWithCatalogMedia(products);
 }
 
 /** Menú del portal: socios no ven productos ocultos ni agotados sin media. */

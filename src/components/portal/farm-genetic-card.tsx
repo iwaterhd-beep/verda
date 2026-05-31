@@ -17,23 +17,27 @@ import { ProductDetailSheet } from "@/components/portal/product-detail-sheet";
 import {
   geneticToProductPreview,
 } from "@/lib/data/product-farms";
-import { geneticHasMedia } from "@/lib/product-farms";
-import type { FarmGenetic, Product } from "@/types";
+import { catalogEntryHasMedia } from "@/lib/catalog-media";
+import type { FarmGenetic, Product, ProductFarm } from "@/types";
 
 interface FarmGeneticCardProps {
   genetic: FarmGenetic;
   farmName: string;
+  farm?: ProductFarm | null;
   product?: Product | null;
 }
 
 export function FarmGeneticCard({
   genetic,
   farmName,
+  farm,
   product,
 }: FarmGeneticCardProps) {
   const [detailOpen, setDetailOpen] = React.useState(false);
-  const preview = geneticToProductPreview(genetic, product);
-  const hasMedia = geneticHasMedia(genetic) || Boolean(product && product.photos?.length);
+  const preview = geneticToProductPreview(genetic, product, farm);
+  const hasMedia =
+    catalogEntryHasMedia(genetic, farm) ||
+    Boolean(product && product.photos?.length);
   const soldOut = (genetic.stock ?? 0) <= 0 || !product;
   const cartProductId = product?.id;
 

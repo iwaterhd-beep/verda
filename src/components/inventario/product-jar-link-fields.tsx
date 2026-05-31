@@ -14,13 +14,13 @@ import {
   fetchClubJars,
   fetchJarItems,
 } from "@/lib/data/product-jars";
-import type { JarItem } from "@/types";
+import type { JarItem, ProductJar } from "@/types";
 
 interface ProductJarLinkFieldsProps {
   jarId: string;
   jarItemId: string;
   onJarChange: (jarId: string) => void;
-  onItemChange: (item: JarItem | null) => void;
+  onItemChange: (item: JarItem | null, jar?: ProductJar | null) => void;
   enabled?: boolean;
 }
 
@@ -82,7 +82,9 @@ export function ProductJarLinkFields({
           onValueChange={(v) => {
             const item =
               items.find((g) => g.id === v) ?? null;
-            onItemChange(v === "none" ? null : item);
+            const jar =
+              item ? jars.find((j) => j.id === item.jarId) ?? null : null;
+            onItemChange(v === "none" ? null : item, jar);
           }}
         >
           <SelectTrigger>

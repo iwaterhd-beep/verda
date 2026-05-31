@@ -17,23 +17,27 @@ import { ProductDetailSheet } from "@/components/portal/product-detail-sheet";
 import {
   jarItemToProductPreview,
 } from "@/lib/data/product-jars";
-import { jarItemHasMedia } from "@/lib/product-jars";
-import type { JarItem, Product } from "@/types";
+import { catalogEntryHasMedia } from "@/lib/catalog-media";
+import type { JarItem, Product, ProductJar } from "@/types";
 
 interface JarItemCardProps {
   item: JarItem;
   jarName: string;
+  jar?: ProductJar | null;
   product?: Product | null;
 }
 
 export function JarItemCard({
   item,
   jarName,
+  jar,
   product,
 }: JarItemCardProps) {
   const [detailOpen, setDetailOpen] = React.useState(false);
-  const preview = jarItemToProductPreview(item, product);
-  const hasMedia = jarItemHasMedia(item) || Boolean(product && product.photos?.length);
+  const preview = jarItemToProductPreview(item, product, jar);
+  const hasMedia =
+    catalogEntryHasMedia(item, jar) ||
+    Boolean(product && product.photos?.length);
   const soldOut = (item.stock ?? 0) <= 0 || !product;
   const cartProductId = product?.id;
 
