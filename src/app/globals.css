@@ -210,4 +210,47 @@
   .touch-target {
     @apply min-h-11 min-w-11 touch-manipulation;
   }
+
+  .portal-protected-media {
+    @apply select-none;
+    -webkit-touch-callout: none;
+  }
+
+  .portal-media-shield {
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+  }
+
+  .portal-media-watermark {
+    pointer-events: none;
+    background-image: repeating-linear-gradient(
+      -32deg,
+      transparent,
+      transparent 72px,
+      hsl(var(--foreground) / 0.035) 72px,
+      hsl(var(--foreground) / 0.035) 73px
+    );
+  }
+
+  .portal-media-watermark::after {
+    content: "Uso privado · Verda";
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: hsl(var(--foreground) / 0.08);
+    transform: rotate(-18deg);
+    pointer-events: none;
+  }
+}
+
+@media print {
+  .portal-protected-media,
+  .portal-protected-media * {
+    visibility: hidden !important;
+  }
 }

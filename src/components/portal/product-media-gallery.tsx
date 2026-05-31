@@ -7,6 +7,7 @@ import {
   productPhotos,
   productVideoUrls,
 } from "@/lib/data/product-media";
+import { ProtectedImage, ProtectedVideo } from "@/components/portal/protected-media";
 import type { Product } from "@/types";
 
 type MediaItem =
@@ -48,27 +49,19 @@ export function ProductMediaGallery({
   const thumbSize = isDetail ? "h-16 w-16" : "h-12 w-12";
 
   return (
-    <div className={className}>
-      <div className={cn("relative w-full bg-secondary", aspect)}>
+    <div className={cn(className, "select-none")}>
+      <div className={cn("relative w-full overflow-hidden bg-secondary", aspect)}>
         {current.type === "video" ? (
-          <video
+          <ProtectedVideo
             key={current.url}
             src={current.url}
             autoPlay
             loop
-            muted
-            playsInline
-            controls={isDetail}
-            className="h-full w-full object-cover"
+            muted={!isDetail}
+            showControls={isDetail}
           />
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={current.url}
-            src={current.url}
-            alt={product.name}
-            className="h-full w-full object-cover"
-          />
+          <ProtectedImage key={current.url} src={current.url} alt={product.name} />
         )}
       </div>
 
@@ -85,30 +78,20 @@ export function ProductMediaGallery({
               type="button"
               onClick={() => setActive(i)}
               className={cn(
-                "relative shrink-0 overflow-hidden rounded-lg border-2 transition-colors touch-manipulation",
+                "portal-protected-media relative shrink-0 overflow-hidden rounded-lg border-2 transition-colors touch-manipulation",
                 thumbSize,
                 i === active ? "border-primary" : "border-transparent opacity-70",
               )}
             >
               {item.type === "video" ? (
                 <>
-                  <video
-                    src={item.url}
-                    muted
-                    playsInline
-                    className="h-full w-full object-cover"
-                  />
-                  <span className="absolute inset-0 grid place-items-center bg-black/30">
+                  <ProtectedVideo src={item.url} muted />
+                  <span className="absolute inset-0 z-20 grid place-items-center bg-black/30">
                     <Play className="h-4 w-4 text-white" />
                   </span>
                 </>
               ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={item.url}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
+                <ProtectedImage src={item.url} alt="" />
               )}
             </button>
           ))}

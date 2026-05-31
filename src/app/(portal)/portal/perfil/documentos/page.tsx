@@ -8,7 +8,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   Clock,
-  ExternalLink,
+  Eye,
 } from "lucide-react";
 import { currentMember } from "@/lib/current-member";
 import { fetchMyMember } from "@/lib/data/members";
@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { formatDate } from "@/lib/utils";
+import { ProtectedImage } from "@/components/portal/protected-media";
 
 const CONSENT_TEXT = `Consentimiento para el tratamiento de datos personales
 
@@ -48,6 +49,10 @@ export default function DocumentosPage() {
   const [viewDoc, setViewDoc] = React.useState<{
     title: string;
     body: string;
+  } | null>(null);
+  const [viewImage, setViewImage] = React.useState<{
+    title: string;
+    url: string;
   } | null>(null);
 
   const signed = member.status === "ACTIVE";
@@ -150,10 +155,13 @@ export default function DocumentosPage() {
               <CardContent className="flex items-center gap-3 p-4">
                 <FileText className="h-5 w-5 shrink-0 text-primary" />
                 <span className="flex-1 text-sm font-medium">{doc.title}</span>
-                <Button variant="outline" size="sm" asChild>
-                  <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4" /> Abrir
-                  </a>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setViewImage({ title: doc.title, url: doc.url })}
+                >
+                  <Eye className="h-4 w-4" /> Ver
                 </Button>
               </CardContent>
             </Card>
@@ -170,6 +178,23 @@ export default function DocumentosPage() {
           </p>
         </CardContent>
       </Card>
+
+      <Dialog open={Boolean(viewImage)} onOpenChange={() => setViewImage(null)}>
+        <DialogContent className="portal-dialog max-w-sm gap-0 overflow-hidden p-0 sm:max-w-md">
+          <DialogHeader className="border-b border-border/50 px-4 py-3 text-left">
+            <DialogTitle>{viewImage?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="aspect-[4/5] w-full bg-secondary">
+            {viewImage?.url && (
+              <ProtectedImage src={viewImage.url} alt={viewImage.title} />
+            )}
+          </div>
+          <p className="px-4 py-3 text-xs text-muted-foreground">
+            Contenido protegido. No está permitido descargar, copiar ni capturar
+            estos documentos.
+          </p>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={Boolean(viewDoc)} onOpenChange={() => setViewDoc(null)}>
         <DialogContent className="max-w-sm">
