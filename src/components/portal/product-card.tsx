@@ -16,7 +16,7 @@ import {
   isCannabisProduct,
   originLabel,
 } from "@/lib/product-strain";
-import { formatCurrency } from "@/lib/utils";
+import { ProductPrice, hasProductOffer } from "@/lib/product-price";
 import { formatPackContents } from "@/lib/product-packs";
 import { ProductMediaGallery } from "@/components/portal/product-media-gallery";
 import { ProductDetailSheet } from "@/components/portal/product-detail-sheet";
@@ -83,11 +83,14 @@ export function ProductCard({ product }: { product: Product }) {
                   </Badge>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground">
-                {product.isPack
-                  ? formatCurrency(product.pricePerUnit)
-                  : `${formatCurrency(product.pricePerUnit)}/${product.unit}`}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <ProductPrice product={product} size="sm" />
+                {hasProductOffer(product) && (
+                  <Badge className="h-5 shrink-0 bg-primary/15 text-[10px] text-primary hover:bg-primary/15">
+                    Oferta
+                  </Badge>
+                )}
+              </div>
               {product.isPack && packContents && (
                 <p className="mt-1 text-xs text-muted-foreground">{packContents}</p>
               )}

@@ -76,6 +76,8 @@ export interface Product {
   unit: ProductUnit;
   lowStockThreshold: number;
   pricePerUnit: number;
+  /** Precio anterior tachado cuando hay oferta. */
+  compareAtPrice?: number | null;
   batch: string;
   expiresAt: string | null;
   isPack?: boolean;

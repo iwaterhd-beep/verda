@@ -246,6 +246,8 @@ export function ProductFormDialog({
 
     const stock = Number(formData.get("stock"));
     const pricePerUnit = Number(formData.get("pricePerUnit"));
+    const compareRaw = String(formData.get("compareAtPrice") || "").trim();
+    const compareAtPrice = compareRaw === "" ? null : Number(compareRaw);
     const lowStockThreshold = Number(formData.get("lowStockThreshold"));
 
     if (!Number.isFinite(stock) || stock < 0) {
@@ -254,6 +256,15 @@ export function ProductFormDialog({
     }
     if (!Number.isFinite(pricePerUnit) || pricePerUnit < 0) {
       toast.error("Indica un precio válido");
+      return;
+    }
+    if (
+      compareAtPrice != null &&
+      (!Number.isFinite(compareAtPrice) ||
+        compareAtPrice <= 0 ||
+        compareAtPrice <= pricePerUnit)
+    ) {
+      toast.error("El precio anterior debe ser mayor que el precio de venta");
       return;
     }
     if (isPack && packItems.length === 0) {
@@ -290,6 +301,7 @@ export function ProductFormDialog({
       packItems: isPack ? packItems : undefined,
       lowStockThreshold,
       pricePerUnit,
+      compareAtPrice,
       batch: String(formData.get("batch") || ""),
       expiresAt: String(formData.get("expiresAt") || "") || null,
       photos,
@@ -508,7 +520,7 @@ export function ProductFormDialog({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="pricePerUnit">{unitInfo.priceLabel}</Label>
+              <Label htmlFor="pricePerUnit">Precio de venta</Label>
               <Input
                 id="pricePerUnit"
                 name="pricePerUnit"
@@ -517,6 +529,26 @@ export function ProductFormDialog({
                 step="0.01"
                 defaultValue={product?.pricePerUnit ?? 0}
               />
+            </div>
+            <div className="grid gap-2 sm:col-span-2">
+              <Label htmlFor="compareAtPrice">Precio anterior (opcional)</Label>
+              <Input
+                id="compareAtPrice"
+                name="compareAtPrice"
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="Ej. 12 — se muestra tachado"
+                defaultValue={
+                  product?.compareAtPrice != null && product.compareAtPrice > 0
+                    ? product.compareAtPrice
+                    : ""
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Si es mayor que el precio de venta, los socios verán una oferta con el
+                precio tachado.
+              </p>
             </div>
           </div>
 

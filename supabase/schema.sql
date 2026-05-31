@@ -143,6 +143,7 @@ create table if not exists public.products (
   unit                 text not null default 'g',
   low_stock_threshold  numeric(10,2) not null default 10,
   price_per_unit       numeric(10,2) not null default 0,
+  compare_at_price     numeric(10,2),
   batch                text,
   expires_at           date,
   photos               text[] not null default '{}',

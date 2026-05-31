@@ -23,7 +23,8 @@ import {
   isCannabisProduct,
   originLabel,
 } from "@/lib/product-strain";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
+import { ProductPrice, hasProductOffer, offerDiscountPercent } from "@/lib/product-price";
 import { ProductMediaGallery } from "@/components/portal/product-media-gallery";
 import type { Product } from "@/types";
 
@@ -94,11 +95,14 @@ export function ProductDetailSheet({
 
           <div className="mt-4 space-y-3">
             <div className="flex items-baseline justify-between gap-3">
-              <p className="text-2xl font-semibold text-primary">
-                {product.isPack
-                  ? formatCurrency(product.pricePerUnit)
-                  : `${formatCurrency(product.pricePerUnit)}/${product.unit}`}
-              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <ProductPrice product={product} size="lg" />
+                {hasProductOffer(product) && offerDiscountPercent(product) != null && (
+                  <Badge className="bg-primary/15 text-primary hover:bg-primary/15">
+                    -{offerDiscountPercent(product)}%
+                  </Badge>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">
                 Stock: {soldOut ? "Agotado" : `${product.stock} ${product.unit}`}
               </p>

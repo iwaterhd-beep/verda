@@ -81,6 +81,7 @@ export interface ProductInput {
   unit: ProductUnit;
   lowStockThreshold: number;
   pricePerUnit: number;
+  compareAtPrice?: number | null;
   batch?: string;
   expiresAt?: string | null;
   isPack?: boolean;
@@ -159,6 +160,13 @@ function validateProductInput(
   if (!name) return "El nombre es obligatorio.";
   if (!(input.stock >= 0)) return "El stock no puede ser negativo.";
   if (!(input.pricePerUnit >= 0)) return "El precio no puede ser negativo.";
+  if (
+    input.compareAtPrice != null &&
+    input.compareAtPrice > 0 &&
+    input.compareAtPrice <= input.pricePerUnit
+  ) {
+    return "El precio anterior debe ser mayor que el precio de venta.";
+  }
   if (!(input.lowStockThreshold >= 0)) {
     return "El umbral de stock bajo no puede ser negativo.";
   }
@@ -214,6 +222,10 @@ function rowFromInput(
     is_pack: isPack,
     low_stock_threshold: Math.round(input.lowStockThreshold * 100) / 100,
     price_per_unit: Math.round(input.pricePerUnit * 100) / 100,
+    compare_at_price:
+      input.compareAtPrice != null && input.compareAtPrice > 0
+        ? Math.round(input.compareAtPrice * 100) / 100
+        : null,
     batch: input.batch?.trim() || null,
     expires_at: input.expiresAt || null,
     photos: input.photos ?? [],
@@ -225,7 +237,7 @@ function rowFromInput(
 }
 
 function isMissingOptionalColumnError(message: string) {
-  return /photos|video_url|video_urls|grower|extractor|thc_percent|genetics|origin|description|is_pack|hidden_from_members/i.test(
+  return /photos|video_url|video_urls|grower|extractor|thc_percent|genetics|origin|description|is_pack|hidden_from_members|compare_at_price/i.test(
     message,
   );
 }
@@ -282,6 +294,7 @@ function baseRowFromInput(
     origin: _o,
     description: _d,
     hidden_from_members: _hfm,
+    compare_at_price: _cap,
     ...base
   } = row;
   return base;

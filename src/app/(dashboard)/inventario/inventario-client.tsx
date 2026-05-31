@@ -25,6 +25,7 @@ import {
 import { DeleteProductDialog } from "@/components/inventario/delete-product-dialog";
 import { toggleProductHiddenAction } from "@/app/(dashboard)/inventario/actions";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { ProductPrice, hasProductOffer } from "@/lib/product-price";
 import { getCategoryDisplay } from "@/lib/product-meta";
 import { productMediaThumb } from "@/components/portal/product-media-gallery";
 import { fetchClubCategories } from "@/lib/data/product-categories";
@@ -247,9 +248,18 @@ export function InventarioClient() {
                           {p.expiresAt ? formatDate(p.expiresAt) : "—"}
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {p.isPack
-                            ? formatCurrency(p.pricePerUnit)
-                            : `${formatCurrency(p.pricePerUnit)}/${p.unit}`}
+                          {hasProductOffer(p) ? (
+                            <div className="flex flex-col items-end gap-0.5">
+                              <ProductPrice product={p} size="md" />
+                              <Badge variant="outline" className="h-5 text-[10px]">
+                                Oferta
+                              </Badge>
+                            </div>
+                          ) : p.isPack ? (
+                            formatCurrency(p.pricePerUnit)
+                          ) : (
+                            `${formatCurrency(p.pricePerUnit)}/${p.unit}`
+                          )}
                         </TableCell>
                         <TableCell className="pr-6 text-right">
                           <div className="flex justify-end gap-1">

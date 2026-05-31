@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { sales } from "@/lib/mock-data";
 import { fetchClubProducts } from "@/lib/data/products";
+import { ProductPrice } from "@/lib/product-price";
 import { formatCurrency, cn } from "@/lib/utils";
 import type { Product } from "@/types";
 
@@ -111,10 +112,10 @@ export default function TpvPage() {
                         </Badge>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {formatCurrency(p.pricePerUnit)}/{p.unit}
-                      {soldOut ? " · Agotado" : ""}
-                    </p>
+                    <ProductPrice product={p} size="sm" />
+                    {soldOut ? (
+                      <p className="text-xs text-muted-foreground">Agotado</p>
+                    ) : null}
                   </button>
                 );
               })

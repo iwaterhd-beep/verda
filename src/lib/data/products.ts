@@ -13,6 +13,7 @@ type Row = {
   unit: string;
   low_stock_threshold: number;
   price_per_unit: number;
+  compare_at_price?: number | null;
   batch: string | null;
   expires_at: string | null;
   is_pack?: boolean | null;
@@ -49,6 +50,8 @@ function toProduct(r: Row, packItems?: PackItem[]): Product {
     unit: isPack ? "pack" : (r.unit as Product["unit"]),
     lowStockThreshold: Number(r.low_stock_threshold),
     pricePerUnit: Number(r.price_per_unit),
+    compareAtPrice:
+      r.compare_at_price != null ? Number(r.compare_at_price) : null,
     batch: r.batch ?? "—",
     expiresAt: r.expires_at,
     isPack,
