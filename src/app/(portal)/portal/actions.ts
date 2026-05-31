@@ -7,6 +7,11 @@ import {
   friendlyAvatarError,
   uploadMemberAvatarBuffer,
 } from "@/lib/member-avatar-server";
+import {
+  isAcceptedImageUpload,
+  MAX_AVATAR_INPUT_BYTES,
+  prepareAvatarImage,
+} from "@/lib/image-server";
 import type { CartItem, Order } from "@/types";
 
 export interface PlaceOrderResult {
@@ -176,11 +181,11 @@ export async function uploadMemberAvatarAction(
   }
 
   const imageFile = file as File;
-  if (!imageFile.type.startsWith("image/")) {
+  if (!isAcceptedImageUpload(imageFile)) {
     return { error: "El archivo debe ser una imagen." };
   }
-  if (imageFile.size > MAX_AVATAR_BYTES) {
-    return { error: "La imagen no puede superar 5 MB." };
+  if (imageFile.size > MAX_AVATAR_INPUT_BYTES) {
+    return { error: "La imagen no puede superar 20 MB." };
   }
 
   const supabase = await createClient();
@@ -199,15 +204,28 @@ export async function uploadMemberAvatarAction(
   }
 
   const admin = createAdminClient();
-  const buffer = Buffer.from(await imageFile.arrayBuffer());
-  const contentType = imageFile.type || "image/jpeg";
+  const rawBuffer = Buffer.from(await imageFile.arrayBuffer());
+
+  let buffer: Buffer;
+  try {
+    buffer = await prepareAvatarImage(rawBuffer);
+  } catch {
+    return {
+      error:
+        "No se pudo procesar la imagen. Prueba con otra foto en JPG o PNG.",
+    };
+  }
+
+  if (buffer.length > MAX_AVATAR_BYTES) {
+    return { error: "La imagen comprimida sigue siendo demasiado grande." };
+  }
 
   const uploaded = await uploadMemberAvatarBuffer(
     admin,
     member.club_id,
     member.id,
     buffer,
-    contentType,
+    "image/jpeg",
   );
   if (uploaded.error || !uploaded.url) {
     return { error: uploaded.error ?? "No se pudo subir la foto." };

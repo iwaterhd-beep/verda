@@ -14,7 +14,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { uploadMemberAvatarAction } from "@/app/(portal)/portal/actions";
-import { fileToCompressedDataUrl } from "@/lib/image";
 import { memberAvatarUrl, cn } from "@/lib/utils";
 import type { Member } from "@/types";
 
@@ -49,10 +48,8 @@ export function MemberAvatarPicker({
     setUploading(true);
     setPickerOpen(false);
     try {
-      const dataUrl = await fileToCompressedDataUrl(file, 800, 0.82);
-      const blob = await fetch(dataUrl).then((response) => response.blob());
       const formData = new FormData();
-      formData.append("avatar", blob, "avatar.jpg");
+      formData.append("avatar", file, file.name || "avatar.jpg");
 
       const res = await uploadMemberAvatarAction(formData);
       if (res.error || !res.url) {
@@ -63,8 +60,11 @@ export function MemberAvatarPicker({
       setPreviewUrl(res.url);
       queryClient.invalidateQueries({ queryKey: ["my-member"] });
       toast.success("Foto de perfil actualizada");
-    } catch {
-      toast.error("No se pudo procesar la imagen");
+    } catch (error) {
+      toast.error("No se pudo subir la foto", {
+        description:
+          error instanceof Error ? error.message : "Error de conexión.",
+      });
     } finally {
       setUploading(false);
       if (cameraInputRef.current) cameraInputRef.current.value = "";
@@ -102,7 +102,7 @@ export function MemberAvatarPicker({
       <input
         ref={cameraInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         capture="user"
         className="hidden"
         onChange={handleFile}
@@ -110,7 +110,7 @@ export function MemberAvatarPicker({
       <input
         ref={galleryInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         className="hidden"
         onChange={handleFile}
       />
