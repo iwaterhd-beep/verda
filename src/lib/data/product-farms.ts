@@ -6,6 +6,7 @@ import {
   listPortalGeneticsAction,
 } from "@/app/(dashboard)/inventario/farm-actions";
 import { resolveProductMedia } from "@/lib/catalog-media";
+import { productMediaLike } from "@/lib/data/product-media";
 import type { FarmGenetic, Product, ProductFarm } from "@/types";
 
 type FarmRow = {
@@ -147,7 +148,11 @@ export function geneticToProductPreview(
   product?: Product | null,
   farm?: ProductFarm | null,
 ): Product {
-  const { photos, videoUrls } = resolveProductMedia(product, genetic, farm);
+  const { photos, videoUrls } = resolveProductMedia(
+    productMediaLike(product),
+    genetic,
+    farm,
+  );
   return {
     id: product?.id ?? genetic.id,
     name: genetic.name,
@@ -162,6 +167,7 @@ export function geneticToProductPreview(
     expiresAt: product?.expiresAt ?? null,
     photos,
     videoUrls,
+    videoUrl: videoUrls[0] ?? null,
     grower: product?.grower ?? null,
     thcPercent: genetic.thcPercent ?? product?.thcPercent ?? null,
     genetics: genetic.genetics ?? product?.genetics ?? null,

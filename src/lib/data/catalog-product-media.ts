@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import { resolveProductMedia } from "@/lib/catalog-media";
-import { productVideoUrls } from "@/lib/data/product-media";
+import { productMediaLike } from "@/lib/data/product-media";
 import type { Product } from "@/types";
 
 type GeneticRow = {
@@ -38,13 +38,6 @@ function rowToMedia(row: {
   return {
     photos: row.photos ?? [],
     videoUrls: row.video_urls ?? [],
-  };
-}
-
-function productAsMedia(product: Product) {
-  return {
-    photos: product.photos ?? [],
-    videoUrls: productVideoUrls(product),
   };
 }
 
@@ -129,7 +122,7 @@ export async function enrichProductsWithCatalogMedia(
       if (genetic) {
         const farm = farmsById.get(genetic.farm_id);
         const media = resolveProductMedia(
-          productAsMedia(next),
+          productMediaLike(next),
           rowToMedia(genetic),
           farm ? rowToMedia(farm) : null,
         );
@@ -149,7 +142,7 @@ export async function enrichProductsWithCatalogMedia(
       if (item) {
         const jar = jarsById.get(item.jar_id);
         const media = resolveProductMedia(
-          productAsMedia(next),
+          productMediaLike(next),
           rowToMedia(item),
           jar ? rowToMedia(jar) : null,
         );

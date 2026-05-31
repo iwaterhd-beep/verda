@@ -18,6 +18,7 @@ import {
   geneticToProductPreview,
 } from "@/lib/data/product-farms";
 import { catalogEntryHasMedia } from "@/lib/catalog-media";
+import { productMediaLike } from "@/lib/data/product-media";
 import type { FarmGenetic, Product, ProductFarm } from "@/types";
 
 interface FarmGeneticCardProps {
@@ -35,7 +36,7 @@ export function FarmGeneticCard({
 }: FarmGeneticCardProps) {
   const [detailOpen, setDetailOpen] = React.useState(false);
   const preview = geneticToProductPreview(genetic, product, farm);
-  const hasMedia = catalogEntryHasMedia(genetic, farm, product);
+  const hasMedia = catalogEntryHasMedia(genetic, farm, productMediaLike(product));
   const soldOut = (genetic.stock ?? 0) <= 0 || !product;
   const cartProductId = product?.id;
 

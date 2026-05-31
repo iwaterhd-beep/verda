@@ -117,6 +117,17 @@ export function productPhotos(product: Pick<Product, "photos">): string[] {
   return product.photos ?? [];
 }
 
+/** Normaliza fotos/vídeos de un producto (incluye `videoUrl` legacy). */
+export function productMediaLike(
+  product: Pick<Product, "photos" | "videoUrls" | "videoUrl"> | null | undefined,
+): { photos: string[]; videoUrls: string[] } | null {
+  if (!product) return null;
+  return {
+    photos: productPhotos(product),
+    videoUrls: productVideoUrls(product),
+  };
+}
+
 export function productHasMedia(product: Product) {
   return productPhotos(product).length > 0 || productVideoUrls(product).length > 0;
 }

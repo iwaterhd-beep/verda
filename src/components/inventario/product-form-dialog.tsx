@@ -33,6 +33,7 @@ import {
   uploadProductVideosParallel,
   removeStorageFileClient,
   syncProductMediaClient,
+  productMediaLike,
   productVideoUrls,
 } from "@/lib/data/product-media";
 import {
@@ -182,14 +183,7 @@ export function ProductFormDialog({
       const genetic = farmGenetics.find((g) => g.id === geneticId);
       if (!genetic) return;
       const farm = farms.find((f) => f.id === (genetic.farmId || farmId));
-      const media = resolveProductMedia(
-        {
-          photos: product?.photos ?? [],
-          videoUrls: product ? productVideoUrls(product) : [],
-        },
-        genetic,
-        farm,
-      );
+      const media = resolveProductMedia(productMediaLike(product), genetic, farm);
       setPhotos(media.photos);
       setVideoUrls(media.videoUrls);
       catalogMediaSyncedRef.current = true;
@@ -200,14 +194,7 @@ export function ProductFormDialog({
       const item = jarItems.find((i) => i.id === jarItemId);
       if (!item) return;
       const jar = jars.find((j) => j.id === (item.jarId || jarId));
-      const media = resolveProductMedia(
-        {
-          photos: product?.photos ?? [],
-          videoUrls: product ? productVideoUrls(product) : [],
-        },
-        item,
-        jar,
-      );
+      const media = resolveProductMedia(productMediaLike(product), item, jar);
       setPhotos(media.photos);
       setVideoUrls(media.videoUrls);
       catalogMediaSyncedRef.current = true;

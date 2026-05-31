@@ -18,6 +18,7 @@ import {
   jarItemToProductPreview,
 } from "@/lib/data/product-jars";
 import { catalogEntryHasMedia } from "@/lib/catalog-media";
+import { productMediaLike } from "@/lib/data/product-media";
 import type { JarItem, Product, ProductJar } from "@/types";
 
 interface JarItemCardProps {
@@ -35,7 +36,7 @@ export function JarItemCard({
 }: JarItemCardProps) {
   const [detailOpen, setDetailOpen] = React.useState(false);
   const preview = jarItemToProductPreview(item, product, jar);
-  const hasMedia = catalogEntryHasMedia(item, jar, product);
+  const hasMedia = catalogEntryHasMedia(item, jar, productMediaLike(product));
   const soldOut = (item.stock ?? 0) <= 0 || !product;
   const cartProductId = product?.id;
 
