@@ -39,6 +39,8 @@ export function DeleteProductDialog({
       }
       await queryClient.invalidateQueries({ queryKey: ["club-products"] });
       await queryClient.invalidateQueries({ queryKey: ["portal-products"] });
+      await queryClient.invalidateQueries({ queryKey: ["portal-farm-genetics"] });
+      await queryClient.invalidateQueries({ queryKey: ["portal-jar-items"] });
       toast.success("Producto eliminado", { description: product.name });
       onOpenChange(false);
     } finally {
@@ -57,10 +59,15 @@ export function DeleteProductDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button variant="destructive" onClick={confirmDelete} disabled={loading}>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => void confirmDelete()}
+            disabled={loading}
+          >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
             <Trash2 className="h-4 w-4" /> Eliminar
           </Button>

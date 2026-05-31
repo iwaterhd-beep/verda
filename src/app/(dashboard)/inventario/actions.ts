@@ -254,6 +254,44 @@ function isMissingPackTableError(message: string) {
   return /product_pack_items/i.test(message);
 }
 
+function productDeleteErrorMessage(message: string) {
+  if (/foreign key|violates.*restrict|23503/i.test(message)) {
+    if (/product_pack_items/i.test(message)) {
+      return "No se puede eliminar: el producto forma parte de uno o más packs.";
+    }
+    return "No se puede eliminar: el producto está referenciado en otro registro.";
+  }
+  return message;
+}
+
+async function detachProductFromPacks(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  clubId: string,
+  productId: string,
+): Promise<string | null> {
+  const { error: asComponentErr } = await supabase
+    .from("product_pack_items")
+    .delete()
+    .eq("club_id", clubId)
+    .eq("product_id", productId);
+
+  if (asComponentErr && !isMissingPackTableError(asComponentErr.message)) {
+    return asComponentErr.message;
+  }
+
+  const { error: asPackErr } = await supabase
+    .from("product_pack_items")
+    .delete()
+    .eq("club_id", clubId)
+    .eq("pack_id", productId);
+
+  if (asPackErr && !isMissingPackTableError(asPackErr.message)) {
+    return asPackErr.message;
+  }
+
+  return null;
+}
+
 async function syncPackItems(
   supabase: Awaited<ReturnType<typeof createClient>>,
   clubId: string,
@@ -509,29 +547,48 @@ export async function deleteProductAction(
   const auth = await staffClubId();
   if ("error" in auth) return { error: auth.error };
 
-  const { data: product } = await auth.supabase
+  const id = productId.trim();
+  if (!id) return { error: "Producto no válido." };
+
+  const { data: product, error: fetchError } = await auth.supabase
     .from("products")
     .select("photos, video_url, video_urls")
     .eq("club_id", auth.clubId)
-    .eq("id", productId)
+    .eq("id", id)
     .maybeSingle();
 
-  const { error } = await auth.supabase
+  if (fetchError) return { error: fetchError.message };
+  if (!product) {
+    return { error: "No se encontró el producto en tu club." };
+  }
+
+  const packErr = await detachProductFromPacks(auth.supabase, auth.clubId, id);
+  if (packErr) {
+    return { error: productDeleteErrorMessage(packErr) };
+  }
+
+  const { data: deleted, error } = await auth.supabase
     .from("products")
     .delete()
     .eq("club_id", auth.clubId)
-    .eq("id", productId);
+    .eq("id", id)
+    .select("id");
 
-  if (error) return { error: error.message };
+  if (error) {
+    return { error: productDeleteErrorMessage(error.message) };
+  }
+  if (!deleted?.length) {
+    return { error: "No se pudo eliminar el producto. Comprueba tus permisos." };
+  }
 
   try {
     const admin = createAdminClient();
-    const videos = product?.video_urls?.length
+    const videos = product.video_urls?.length
       ? product.video_urls
-      : product?.video_url
+      : product.video_url
         ? [product.video_url]
         : [];
-    const paths = collectProductStoragePaths(product?.photos ?? [], videos);
+    const paths = collectProductStoragePaths(product.photos ?? [], videos);
     if (paths.length) {
       await admin.storage.from("product-media").remove(paths);
     }

@@ -13,7 +13,7 @@ create table if not exists public.product_pack_items (
   unit        text not null default 'g' check (unit in ('g', 'ud')),
   sort_order  int not null default 0,
   foreign key (club_id, pack_id) references public.products(club_id, id) on delete cascade,
-  foreign key (club_id, product_id) references public.products(club_id, id) on delete restrict
+  foreign key (club_id, product_id) references public.products(club_id, id) on delete cascade
 );
 
 create index if not exists product_pack_items_pack_idx
