@@ -1,3 +1,4 @@
+
 -- ════════════════════════════════════════════════════════════
 -- Verda — Categorías de producto por club
 -- Supabase → SQL Editor → Run
@@ -10,6 +11,7 @@ create table if not exists public.product_categories (
   emoji       text not null default '✨',
   sort_order  int not null default 0,
   is_cannabis boolean not null default false,
+  color       text,
   created_at  timestamptz default now(),
   primary key (club_id, id)
 );

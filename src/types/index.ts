@@ -56,6 +56,8 @@ export interface ProductCategory {
   emoji: string;
   sortOrder: number;
   isCannabis: boolean;
+  /** Color hex (#rrggbb) para fondos y badges. */
+  color?: string | null;
 }
 
 export interface PackItem {

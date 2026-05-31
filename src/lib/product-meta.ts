@@ -36,6 +36,8 @@ export {
   DEFAULT_PRODUCT_CATEGORIES,
   getCategoryDisplay,
   isCannabisCategory,
+  categoryBadgeStyle,
+  categoryChipStyle,
 } from "@/lib/product-categories";
 
 export const unitOptions: {

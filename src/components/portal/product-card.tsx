@@ -20,6 +20,7 @@ import { ProductPrice, hasProductOffer } from "@/lib/product-price";
 import { formatPackContents } from "@/lib/product-packs";
 import { ProductMediaGallery } from "@/components/portal/product-media-gallery";
 import { ProductDetailSheet } from "@/components/portal/product-detail-sheet";
+import { CategoryIconBackdrop } from "@/components/category-icon-backdrop";
 import type { Product } from "@/types";
 
 export function ProductCard({ product }: { product: Product }) {
@@ -68,11 +69,12 @@ export function ProductCard({ product }: { product: Product }) {
             aria-label={`Ver detalle de ${product.name}`}
           >
             {!hasMedia && (
-              <span
-                className={`grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${meta.gradient} text-2xl`}
+              <CategoryIconBackdrop
+                display={meta}
+                className="h-14 w-14 shrink-0 text-2xl"
               >
                 {meta.emoji}
-              </span>
+              </CategoryIconBackdrop>
             )}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">

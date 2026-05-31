@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   DEFAULT_PRODUCT_CATEGORIES,
   categoryIdFromLabel,
+  normalizeCategoryColor,
 } from "@/lib/product-categories";
 import type { ProductCategory } from "@/types";
 
@@ -32,6 +33,7 @@ type CategoryRow = {
   emoji: string;
   sort_order: number;
   is_cannabis: boolean;
+  color?: string | null;
 };
 
 function toCategory(r: CategoryRow): ProductCategory {
@@ -41,12 +43,20 @@ function toCategory(r: CategoryRow): ProductCategory {
     emoji: r.emoji,
     sortOrder: r.sort_order,
     isCannabis: r.is_cannabis,
+    color: normalizeCategoryColor(r.color),
   };
 }
 
 function isMissingCategoriesTable(message: string) {
   return /product_categories/i.test(message);
 }
+
+function isMissingColorColumn(message: string) {
+  return /color/i.test(message) && /product_categories/i.test(message);
+}
+
+const CATEGORY_SELECT =
+  "id, label, emoji, sort_order, is_cannabis, color";
 
 export async function ensureClubCategories(
   clubId: string,
@@ -66,6 +76,7 @@ export async function ensureClubCategories(
     emoji: c.emoji,
     sort_order: c.sortOrder,
     is_cannabis: c.isCannabis,
+    color: c.color ?? null,
   }));
 
   await supabase.from("product_categories").insert(rows);
@@ -92,7 +103,7 @@ export async function listClubCategoriesAction(): Promise<{
 
     const { data, error } = await supabase
       .from("product_categories")
-      .select("id, label, emoji, sort_order, is_cannabis")
+      .select(CATEGORY_SELECT)
       .eq("club_id", profile.club_id)
       .order("sort_order")
       .order("label");
@@ -110,7 +121,7 @@ export async function listClubCategoriesAction(): Promise<{
 
   const { data, error } = await auth.supabase
     .from("product_categories")
-    .select("id, label, emoji, sort_order, is_cannabis")
+    .select(CATEGORY_SELECT)
     .eq("club_id", auth.clubId)
     .order("sort_order")
     .order("label");
@@ -134,6 +145,7 @@ export async function createCategoryAction(input: {
   label: string;
   emoji?: string;
   isCannabis?: boolean;
+  color?: string;
 }): Promise<{ error?: string; category?: ProductCategory }> {
   const label = input.label.trim();
   if (!label) return { error: "El nombre es obligatorio." };
@@ -166,6 +178,7 @@ export async function createCategoryAction(input: {
     .maybeSingle();
 
   const emoji = (input.emoji?.trim() || "✨").slice(0, 8);
+  const color = normalizeCategoryColor(input.color);
   const row = {
     id,
     club_id: auth.clubId,
@@ -173,9 +186,14 @@ export async function createCategoryAction(input: {
     emoji,
     sort_order: (maxSort?.sort_order ?? -1) + 1,
     is_cannabis: Boolean(input.isCannabis),
+    color,
   };
 
-  const { error } = await auth.supabase.from("product_categories").insert(row);
+  let { error } = await auth.supabase.from("product_categories").insert(row);
+  if (error && isMissingColorColumn(error.message)) {
+    const { color: _c, ...rowWithoutColor } = row;
+    ({ error } = await auth.supabase.from("product_categories").insert(rowWithoutColor));
+  }
   if (error) {
     if (isMissingCategoriesTable(error.message)) {
       return {
@@ -192,8 +210,43 @@ export async function createCategoryAction(input: {
       emoji: row.emoji,
       sortOrder: row.sort_order,
       isCannabis: row.is_cannabis,
+      color: row.color ?? undefined,
     },
   };
+}
+
+export async function updateCategoryColorAction(
+  categoryId: string,
+  color: string,
+): Promise<{ error?: string; category?: ProductCategory }> {
+  const id = categoryId.trim();
+  if (!id) return { error: "Categoría no válida." };
+
+  const normalized = normalizeCategoryColor(color);
+  if (!normalized) return { error: "Color no válido. Usa formato #rrggbb." };
+
+  const auth = await staffClubId();
+  if ("error" in auth) return { error: auth.error };
+
+  const { data, error } = await auth.supabase
+    .from("product_categories")
+    .update({ color: normalized })
+    .eq("club_id", auth.clubId)
+    .eq("id", id)
+    .select(CATEGORY_SELECT)
+    .maybeSingle();
+
+  if (error) {
+    if (isMissingColorColumn(error.message)) {
+      return {
+        error: "Ejecuta supabase/product-category-colors.sql en Supabase primero.",
+      };
+    }
+    return { error: error.message };
+  }
+  if (!data) return { error: "No se encontró la categoría." };
+
+  return { category: toCategory(data as CategoryRow) };
 }
 
 export async function deleteCategoryAction(

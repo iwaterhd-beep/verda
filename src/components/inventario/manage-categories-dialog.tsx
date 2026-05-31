@@ -21,17 +21,27 @@ import { fetchClubCategories } from "@/lib/data/product-categories";
 import {
   createCategoryAction,
   deleteCategoryAction,
+  updateCategoryColorAction,
 } from "@/app/(dashboard)/inventario/category-actions";
-import { isCannabisCategory } from "@/lib/product-categories";
+import {
+  categorySurfaceStyle,
+  getCategoryDisplay,
+  isCannabisCategory,
+  resolveCategoryColor,
+} from "@/lib/product-categories";
+
+const DEFAULT_NEW_COLOR = "#14b8a6";
 
 export function ManageCategoriesDialog() {
   const queryClient = useQueryClient();
   const [open, setOpen] = React.useState(false);
   const [label, setLabel] = React.useState("");
   const [emoji, setEmoji] = React.useState("");
+  const [color, setColor] = React.useState(DEFAULT_NEW_COLOR);
   const [isCannabis, setIsCannabis] = React.useState(false);
   const [creating, setCreating] = React.useState(false);
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [savingColorId, setSavingColorId] = React.useState<string | null>(null);
 
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ["club-categories"],
@@ -52,6 +62,7 @@ export function ManageCategoriesDialog() {
         label: label.trim(),
         emoji: emoji.trim() || undefined,
         isCannabis,
+        color,
       });
       if (res.error) {
         toast.error("No se pudo crear la categoría", { description: res.error });
@@ -60,10 +71,25 @@ export function ManageCategoriesDialog() {
       toast.success("Categoría creada", { description: res.category?.label });
       setLabel("");
       setEmoji("");
+      setColor(DEFAULT_NEW_COLOR);
       setIsCannabis(false);
       await queryClient.invalidateQueries({ queryKey: ["club-categories"] });
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handleColorChange(categoryId: string, nextColor: string) {
+    setSavingColorId(categoryId);
+    try {
+      const res = await updateCategoryColorAction(categoryId, nextColor);
+      if (res.error) {
+        toast.error("No se pudo guardar el color", { description: res.error });
+        return;
+      }
+      await queryClient.invalidateQueries({ queryKey: ["club-categories"] });
+    } finally {
+      setSavingColorId(null);
     }
   }
 
@@ -101,7 +127,7 @@ export function ManageCategoriesDialog() {
         <DialogHeader>
           <DialogTitle>Categorías de producto</DialogTitle>
           <DialogDescription>
-            Crea o elimina categorías del menú e inventario de tu club.
+            Nombre, emoji y color de cada categoría en el menú e inventario.
           </DialogDescription>
         </DialogHeader>
 
@@ -111,47 +137,67 @@ export function ManageCategoriesDialog() {
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            categories.map((cat) => (
-              <div
-                key={cat.id}
-                className="flex items-center gap-2 rounded-lg bg-secondary/40 px-3 py-2"
-              >
-                <span className="text-lg">{cat.emoji}</span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{cat.label}</p>
-                  {cat.isCannabis && (
-                    <p className="text-[11px] text-muted-foreground">
-                      Ficha cannabis
-                    </p>
-                  )}
-                </div>
-                {isCannabisCategory(cat.id, categories) && (
-                  <Badge variant="outline" className="hidden shrink-0 sm:inline-flex">
-                    THC
-                  </Badge>
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
-                  disabled={deletingId === cat.id}
-                  onClick={() => handleDelete(cat.id, cat.label)}
+            categories.map((cat) => {
+              const display = getCategoryDisplay(cat.id, categories);
+              return (
+                <div
+                  key={cat.id}
+                  className="flex items-center gap-2 rounded-lg bg-secondary/40 px-3 py-2"
                 >
-                  {deletingId === cat.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
+                  <span
+                    className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-lg"
+                    style={categorySurfaceStyle(display.color)}
+                  >
+                    {cat.emoji}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{cat.label}</p>
+                    {cat.isCannabis && (
+                      <p className="text-[11px] text-muted-foreground">
+                        Ficha cannabis
+                      </p>
+                    )}
+                  </div>
+                  <label className="relative shrink-0">
+                    <span className="sr-only">Color de {cat.label}</span>
+                    <input
+                      type="color"
+                      value={resolveCategoryColor(cat)}
+                      disabled={savingColorId === cat.id}
+                      onChange={(e) =>
+                        void handleColorChange(cat.id, e.target.value)
+                      }
+                      className="h-9 w-9 cursor-pointer rounded-lg border border-border bg-transparent p-0.5 disabled:opacity-50"
+                    />
+                  </label>
+                  {isCannabisCategory(cat.id, categories) && (
+                    <Badge variant="outline" className="hidden shrink-0 md:inline-flex">
+                      THC
+                    </Badge>
                   )}
-                </Button>
-              </div>
-            ))
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
+                    disabled={deletingId === cat.id}
+                    onClick={() => handleDelete(cat.id, cat.label)}
+                  >
+                    {deletingId === cat.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              );
+            })
           )}
         </div>
 
         <form onSubmit={handleCreate} className="space-y-3 border-t border-border pt-4">
           <p className="text-sm font-medium">Nueva categoría</p>
-          <div className="grid grid-cols-[1fr_4.5rem] gap-2">
+          <div className="grid grid-cols-[1fr_4.5rem_3rem] gap-2">
             <div className="grid gap-2">
               <Label htmlFor="catLabel">Nombre</Label>
               <Input
@@ -169,6 +215,16 @@ export function ManageCategoriesDialog() {
                 onChange={(e) => setEmoji(e.target.value)}
                 placeholder="✨"
                 className="text-center text-lg"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="catColor">Color</Label>
+              <input
+                id="catColor"
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="h-10 w-full cursor-pointer rounded-md border border-input bg-transparent p-1"
               />
             </div>
           </div>

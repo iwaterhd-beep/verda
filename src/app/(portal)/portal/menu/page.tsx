@@ -8,7 +8,7 @@ import { ProductCard } from "@/components/portal/product-card";
 import { CartBar } from "@/components/portal/cart-bar";
 import { fetchPortalProducts } from "@/lib/data/products";
 import { fetchClubCategories } from "@/lib/data/product-categories";
-import { getCategoryDisplay } from "@/lib/product-meta";
+import { getCategoryDisplay, categoryChipStyle } from "@/lib/product-meta";
 import { useCart } from "@/store/use-cart";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +68,7 @@ export default function MenuPage() {
             <Chip
               key={c.id}
               active={category === c.id}
+              accentColor={display.color}
               onClick={() => setCategory(c.id)}
             >
               {display.emoji} {display.label}
@@ -106,10 +107,12 @@ export default function MenuPage() {
 
 function Chip({
   active,
+  accentColor,
   onClick,
   children,
 }: {
   active: boolean;
+  accentColor?: string;
   onClick: () => void;
   children: React.ReactNode;
 }) {
@@ -118,10 +121,12 @@ function Chip({
       onClick={onClick}
       className={cn(
         "min-h-10 shrink-0 touch-manipulation whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-colors active:scale-[0.98]",
-        active
-          ? "border-primary bg-primary/15 text-primary"
-          : "border-border text-muted-foreground hover:text-foreground",
+        !accentColor &&
+          (active
+            ? "border-primary bg-primary/15 text-primary"
+            : "border-border text-muted-foreground hover:text-foreground"),
       )}
+      style={accentColor ? categoryChipStyle(accentColor, active) : undefined}
     >
       {children}
     </button>

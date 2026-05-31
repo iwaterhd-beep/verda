@@ -25,6 +25,7 @@ import {
 } from "@/lib/product-strain";
 import { formatDate } from "@/lib/utils";
 import { ProductPrice, hasProductOffer, offerDiscountPercent } from "@/lib/product-price";
+import { CategoryIconBackdrop } from "@/components/category-icon-backdrop";
 import { ProductMediaGallery } from "@/components/portal/product-media-gallery";
 import type { Product } from "@/types";
 
@@ -62,11 +63,9 @@ export function ProductDetailSheet({
         <DialogHeader className="shrink-0 border-b border-border/50 px-4 py-3 text-left">
           <div className="flex items-start gap-2 pr-8">
             {!hasMedia && (
-              <span
-                className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${meta.gradient} text-lg`}
-              >
+              <CategoryIconBackdrop display={meta} className="h-10 w-10 shrink-0 text-lg">
                 {meta.emoji}
-              </span>
+              </CategoryIconBackdrop>
             )}
             <div className="min-w-0">
               <DialogTitle className="text-lg leading-tight">{product.name}</DialogTitle>
@@ -86,11 +85,12 @@ export function ProductDetailSheet({
           {hasMedia ? (
             <ProductMediaGallery product={product} variant="detail" />
           ) : (
-            <div
-              className={`grid aspect-[4/3] place-items-center rounded-2xl bg-gradient-to-br ${meta.gradient} text-6xl`}
+            <CategoryIconBackdrop
+              display={meta}
+              className="aspect-[4/3] w-full rounded-2xl text-6xl"
             >
               {meta.emoji}
-            </div>
+            </CategoryIconBackdrop>
           )}
 
           <div className="mt-4 space-y-3">

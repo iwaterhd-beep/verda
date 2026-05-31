@@ -11,6 +11,7 @@ type Row = {
   emoji: string;
   sort_order: number;
   is_cannabis: boolean;
+  color?: string | null;
 };
 
 function toCategory(r: Row): ProductCategory {
@@ -20,6 +21,7 @@ function toCategory(r: Row): ProductCategory {
     emoji: r.emoji,
     sortOrder: r.sort_order,
     isCannabis: r.is_cannabis,
+    color: r.color ?? null,
   };
 }
 
@@ -37,7 +39,7 @@ export async function fetchClubCategories(): Promise<ProductCategory[]> {
   const supabase = createClient();
   const { data, error } = await supabase
     .from("product_categories")
-    .select("id, label, emoji, sort_order, is_cannabis")
+    .select("id, label, emoji, sort_order, is_cannabis, color")
     .order("sort_order")
     .order("label");
 

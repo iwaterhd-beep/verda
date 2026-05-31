@@ -26,7 +26,7 @@ import { DeleteProductDialog } from "@/components/inventario/delete-product-dial
 import { toggleProductHiddenAction } from "@/app/(dashboard)/inventario/actions";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ProductPrice, hasProductOffer } from "@/lib/product-price";
-import { getCategoryDisplay } from "@/lib/product-meta";
+import { getCategoryDisplay, categoryBadgeStyle } from "@/lib/product-meta";
 import { productMediaThumb } from "@/components/portal/product-media-gallery";
 import { fetchClubCategories } from "@/lib/data/product-categories";
 import type { Product } from "@/types";
@@ -208,7 +208,12 @@ export function InventarioClient() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">
+                          <Badge
+                            variant="outline"
+                            style={categoryBadgeStyle(
+                              getCategoryDisplay(p.category, categories).color,
+                            )}
+                          >
                             {getCategoryDisplay(p.category, categories).formLabel}
                           </Badge>
                         </TableCell>

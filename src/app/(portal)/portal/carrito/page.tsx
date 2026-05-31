@@ -25,6 +25,7 @@ import { currentMember } from "@/lib/current-member";
 import { fetchMyMember } from "@/lib/data/members";
 import { placeOrderAction } from "@/app/(portal)/portal/actions";
 import { getCategoryDisplay } from "@/lib/product-meta";
+import { CategoryIconBackdrop } from "@/components/category-icon-backdrop";
 import { fetchClubCategories } from "@/lib/data/product-categories";
 import { formatCurrency, cn } from "@/lib/utils";
 import type { Order } from "@/types";
@@ -118,11 +119,9 @@ export default function CartPage() {
           return (
             <Card key={i.productId}>
               <CardContent className="flex items-center gap-3 p-3">
-                <span
-                  className={`grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-to-br ${meta.gradient} text-xl`}
-                >
+                <CategoryIconBackdrop display={meta} className="h-12 w-12 shrink-0 text-xl">
                   {meta.emoji}
-                </span>
+                </CategoryIconBackdrop>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium">{i.name}</p>
                   <p className="text-sm text-muted-foreground">
