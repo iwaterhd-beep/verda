@@ -43,6 +43,7 @@ import {
 import { formatFileSize } from "@/lib/utils";
 import { ProductStrainFields } from "@/components/inventario/product-strain-fields";
 import { ProductGeneticLinkFields } from "@/components/inventario/product-genetic-link-fields";
+import { ProductJarLinkFields } from "@/components/inventario/product-jar-link-fields";
 import { isCannabisProduct } from "@/lib/product-strain";
 import { productCategoriesFromList, unitMeta, unitOptions } from "@/lib/product-meta";
 import {
@@ -52,7 +53,7 @@ import {
 } from "@/components/inventario/product-pack-fields";
 import { fetchClubCategories } from "@/lib/data/product-categories";
 import type { ProductGenetics, ProductOrigin } from "@/lib/product-strain";
-import type { FarmGenetic, Product } from "@/types";
+import type { FarmGenetic, JarItem, Product } from "@/types";
 
 const MAX_PHOTOS = MAX_PRODUCT_PHOTOS;
 
@@ -96,6 +97,8 @@ export function ProductFormDialog({
   );
   const [farmId, setFarmId] = React.useState(product?.farmId ?? "");
   const [geneticId, setGeneticId] = React.useState(product?.geneticId ?? "");
+  const [jarId, setJarId] = React.useState(product?.jarId ?? "");
+  const [jarItemId, setJarItemId] = React.useState(product?.jarItemId ?? "");
   const [origin, setOrigin] = React.useState<ProductOrigin | "">(
     product?.origin ?? "",
   );
@@ -127,6 +130,8 @@ export function ProductFormDialog({
     setGenetics(product?.genetics ?? "");
     setFarmId(product?.farmId ?? "");
     setGeneticId(product?.geneticId ?? "");
+    setJarId(product?.jarId ?? "");
+    setJarItemId(product?.jarItemId ?? "");
     setOrigin(product?.origin ?? "");
     setPhotos(product?.photos ?? []);
     setVideoUrls(product ? productVideoUrls(product) : []);
@@ -238,6 +243,19 @@ export function ProductFormDialog({
     });
   }
 
+  function applyJarItemLink(item: JarItem | null) {
+    setJarItemId(item?.id ?? "");
+    if (!item) return;
+    setName(item.name);
+    if (item.photos.length) setPhotos(item.photos);
+    if (item.videoUrls.length) setVideoUrls(item.videoUrls);
+    setGenetics(item.genetics ?? "");
+    setOrigin(item.origin ?? "");
+    if (priceInputRef.current) {
+      priceInputRef.current.value = String(item.pricePerUnit);
+    }
+  }
+
   function applyGeneticLink(genetic: FarmGenetic | null) {
     setGeneticId(genetic?.id ?? "");
     if (!genetic) return;
@@ -333,6 +351,8 @@ export function ProductFormDialog({
       description: String(formData.get("description") || ""),
       farmId: farmId || null,
       geneticId: geneticId || null,
+      jarId: jarId || null,
+      jarItemId: jarItemId || null,
     };
 
     setLoading(true);
@@ -626,6 +646,19 @@ export function ProductFormDialog({
               onGeneticChange={(g) => {
                 if (g) setFarmId(g.farmId);
                 applyGeneticLink(g);
+              }}
+              enabled={open}
+            />
+          )}
+
+          {!isPack && (
+            <ProductJarLinkFields
+              jarId={jarId}
+              jarItemId={jarItemId}
+              onJarChange={setJarId}
+              onItemChange={(item) => {
+                if (item) setJarId(item.jarId);
+                applyJarItemLink(item);
               }}
               enabled={open}
             />

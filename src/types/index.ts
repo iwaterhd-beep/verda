@@ -88,6 +88,32 @@ export interface FarmGenetic {
   productId?: string | null;
 }
 
+export interface ProductJar {
+  id: string;
+  name: string;
+  description?: string | null;
+  photos: string[];
+  videoUrls: string[];
+  sortOrder: number;
+}
+
+export interface JarItem {
+  id: string;
+  jarId: string;
+  name: string;
+  description?: string | null;
+  photos: string[];
+  videoUrls: string[];
+  pricePerUnit: number;
+  compareAtPrice?: number | null;
+  genetics?: "INDICA" | "SATIVA" | "HYBRID" | null;
+  thcPercent?: number | null;
+  origin?: "SPAIN" | "CALIFORNIA" | "NETHERLANDS" | "THAILAND" | "CANADA" | null;
+  sortOrder: number;
+  stock?: number;
+  productId?: string | null;
+}
+
 export interface PackItem {
   productId: string;
   productName?: string;
@@ -126,6 +152,10 @@ export interface Product {
   farmId?: string | null;
   /** Genética del catálogo (opcional). */
   geneticId?: string | null;
+  /** Jar del catálogo (opcional). */
+  jarId?: string | null;
+  /** Ítem del catálogo Jars (opcional). */
+  jarItemId?: string | null;
   /** No visible en el menú del portal; solo staff puede dispensar. */
   hiddenFromMembers?: boolean;
 }

@@ -99,6 +99,8 @@ export interface ProductInput {
   hiddenFromMembers?: boolean;
   farmId?: string | null;
   geneticId?: string | null;
+  jarId?: string | null;
+  jarItemId?: string | null;
 }
 
 export interface ProductActionResult {
@@ -236,12 +238,14 @@ function rowFromInput(
     hidden_from_members: Boolean(input.hiddenFromMembers),
     farm_id: input.farmId ?? null,
     genetic_id: input.geneticId ?? null,
+    jar_id: input.jarId ?? null,
+    jar_item_id: input.jarItemId ?? null,
     ...strainFieldsFromInput(input, isCannabis && !isPack),
   };
 }
 
 function isMissingOptionalColumnError(message: string) {
-  return /photos|video_url|video_urls|grower|extractor|thc_percent|genetics|origin|description|is_pack|hidden_from_members|compare_at_price|farm_id|genetic_id/i.test(
+  return /photos|video_url|video_urls|grower|extractor|thc_percent|genetics|origin|description|is_pack|hidden_from_members|compare_at_price|farm_id|genetic_id|jar_id|jar_item_id/i.test(
     message,
   );
 }
@@ -301,6 +305,8 @@ function baseRowFromInput(
     compare_at_price: _cap,
     farm_id: _fi,
     genetic_id: _gi,
+    jar_id: _ji,
+    jar_item_id: _jii,
     ...base
   } = row;
   return base;

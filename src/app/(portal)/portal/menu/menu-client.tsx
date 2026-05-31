@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Search, Loader2, Sprout } from "lucide-react";
+import { Search, Loader2, Sprout, FlaskConical } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { ProductCard } from "@/components/portal/product-card";
 import { FarmGeneticCard } from "@/components/portal/farm-genetic-card";
+import { JarItemCard } from "@/components/portal/jar-item-card";
 import { CartBar } from "@/components/portal/cart-bar";
 import { fetchPortalProducts } from "@/lib/data/products";
 import { fetchClubCategories } from "@/lib/data/product-categories";
@@ -15,8 +16,14 @@ import {
   fetchFarmGenetics,
   fetchPortalFarmGenetics,
 } from "@/lib/data/product-farms";
+import {
+  fetchClubJars,
+  fetchJarItems,
+  fetchPortalJarItems,
+} from "@/lib/data/product-jars";
 import { getCategoryDisplay, categoryChipStyle } from "@/lib/product-meta";
 import { PortalFarmCard } from "@/components/portal/portal-farm-card";
+import { PortalJarCard } from "@/components/portal/portal-jar-card";
 import { useCart } from "@/store/use-cart";
 import { cn } from "@/lib/utils";
 
@@ -25,12 +32,30 @@ export function MenuPageClient() {
   const [query, setQuery] = React.useState("");
   const [category, setCategory] = React.useState<string>("ALL");
   const [farm, setFarm] = React.useState<string>("ALL");
+  const [jar, setJar] = React.useState<string>("ALL");
   const cartCount = useCart((s) => s.count());
 
   React.useEffect(() => {
-    const fromUrl = searchParams.get("farm");
-    if (fromUrl) setFarm(fromUrl);
+    const fromFarm = searchParams.get("farm");
+    const fromJar = searchParams.get("jar");
+    if (fromFarm) {
+      setFarm(fromFarm);
+      setJar("ALL");
+    } else if (fromJar) {
+      setJar(fromJar);
+      setFarm("ALL");
+    }
   }, [searchParams]);
+
+  function selectFarm(id: string) {
+    setFarm(id);
+    if (id !== "ALL") setJar("ALL");
+  }
+
+  function selectJar(id: string) {
+    setJar(id);
+    if (id !== "ALL") setFarm("ALL");
+  }
 
   const { data: products = [], isLoading, error } = useQuery({
     queryKey: ["portal-products"],
@@ -52,11 +77,28 @@ export function MenuPageClient() {
     queryFn: () => fetchFarmGenetics(),
   });
 
+  const { data: jars = [] } = useQuery({
+    queryKey: ["club-jars"],
+    queryFn: fetchClubJars,
+  });
+
+  const { data: allJarItems = [] } = useQuery({
+    queryKey: ["jar-items-all"],
+    queryFn: () => fetchJarItems(),
+  });
+
   const { data: farmGenetics = [], isLoading: geneticsLoading } = useQuery({
     queryKey: ["portal-farm-genetics", farm, products.map((p) => p.id).join(",")],
     queryFn: () =>
       fetchPortalFarmGenetics(products, farm === "ALL" ? undefined : farm),
     enabled: farm !== "ALL" && !isLoading,
+  });
+
+  const { data: portalJarItems = [], isLoading: jarItemsLoading } = useQuery({
+    queryKey: ["portal-jar-items", jar, products.map((p) => p.id).join(",")],
+    queryFn: () =>
+      fetchPortalJarItems(products, jar === "ALL" ? undefined : jar),
+    enabled: jar !== "ALL" && !isLoading,
   });
 
   const availableCategories = categories.filter((c) =>
@@ -71,11 +113,20 @@ export function MenuPageClient() {
     return map;
   }, [allGenetics]);
 
+  const itemsByJar = React.useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of allJarItems) {
+      map.set(item.jarId, (map.get(item.jarId) ?? 0) + 1);
+    }
+    return map;
+  }, [allJarItems]);
+
   const filteredProducts = products.filter((p) => {
     const matchesQuery = p.name.toLowerCase().includes(query.toLowerCase());
     const matchesCat = category === "ALL" || p.category === category;
     const matchesFarm = farm === "ALL" || p.farmId === farm;
-    return matchesQuery && matchesCat && matchesFarm;
+    const matchesJar = jar === "ALL" || p.jarId === jar;
+    return matchesQuery && matchesCat && matchesFarm && matchesJar;
   });
 
   const filteredGenetics = farmGenetics.filter((g) => {
@@ -84,9 +135,17 @@ export function MenuPageClient() {
     return matchesQuery && matchesFarm;
   });
 
+  const filteredJarItems = portalJarItems.filter((item) => {
+    const matchesQuery = item.name.toLowerCase().includes(query.toLowerCase());
+    const matchesJar = jar === "ALL" || item.jarId === jar;
+    return matchesQuery && matchesJar;
+  });
+
   const useGeneticView = farm !== "ALL";
+  const useJarItemView = jar !== "ALL";
 
   const farmsById = Object.fromEntries(farms.map((f) => [f.id, f.name]));
+  const jarsById = Object.fromEntries(jars.map((j) => [j.id, j.name]));
 
   return (
     <div
@@ -142,7 +201,7 @@ export function MenuPageClient() {
           <div className="portal-scroll-x -mx-4 flex gap-2 px-4 pb-1">
             <Chip
               active={farm === "ALL"}
-              onClick={() => setFarm("ALL")}
+              onClick={() => selectFarm("ALL")}
               accentColor="#10b981"
             >
               Todas
@@ -152,7 +211,7 @@ export function MenuPageClient() {
                 key={f.id}
                 active={farm === f.id}
                 accentColor="#10b981"
-                onClick={() => setFarm(f.id)}
+                onClick={() => selectFarm(f.id)}
               >
                 🌱 {f.name}
               </Chip>
@@ -161,7 +220,35 @@ export function MenuPageClient() {
         </div>
       )}
 
-      {farm === "ALL" && farms.length > 0 && (
+      {jars.length > 0 && (
+        <div className="space-y-2">
+          <p className="flex items-center gap-1.5 px-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            <FlaskConical className="h-3 w-3" />
+            Jars
+          </p>
+          <div className="portal-scroll-x -mx-4 flex gap-2 px-4 pb-1">
+            <Chip
+              active={jar === "ALL"}
+              onClick={() => selectJar("ALL")}
+              accentColor="#6366f1"
+            >
+              Todos
+            </Chip>
+            {jars.map((j) => (
+              <Chip
+                key={j.id}
+                active={jar === j.id}
+                accentColor="#6366f1"
+                onClick={() => selectJar(j.id)}
+              >
+                🫙 {j.name}
+              </Chip>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {farm === "ALL" && jar === "ALL" && farms.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm font-medium">Explorar por farm</p>
           <div className="space-y-2">
@@ -170,14 +257,32 @@ export function MenuPageClient() {
                 key={f.id}
                 farm={f}
                 geneticsCount={geneticsByFarm.get(f.id) ?? 0}
-                onSelect={setFarm}
+                onSelect={selectFarm}
               />
             ))}
           </div>
         </div>
       )}
 
-      {isLoading || (useGeneticView && geneticsLoading) ? (
+      {farm === "ALL" && jar === "ALL" && jars.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Explorar por jar</p>
+          <div className="space-y-2">
+            {jars.map((j) => (
+              <PortalJarCard
+                key={j.id}
+                jar={j}
+                itemsCount={itemsByJar.get(j.id) ?? 0}
+                onSelect={selectJar}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isLoading ||
+      (useGeneticView && geneticsLoading) ||
+      (useJarItemView && jarItemsLoading) ? (
         <div className="flex justify-center py-16">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
@@ -185,6 +290,31 @@ export function MenuPageClient() {
         <p className="py-12 text-center text-sm text-destructive">
           No se pudo cargar el menú.
         </p>
+      ) : useJarItemView ? (
+        <div className="space-y-3">
+          {jarsById[jar] && (
+            <p className="text-sm text-muted-foreground">
+              Ítems de{" "}
+              <span className="font-medium text-foreground">{jarsById[jar]}</span>
+            </p>
+          )}
+          {filteredJarItems.map((item) => {
+            const linked = products.find((p) => p.id === item.productId);
+            return (
+              <JarItemCard
+                key={item.id}
+                item={item}
+                jarName={jarsById[item.jarId] ?? "Jar"}
+                product={linked}
+              />
+            );
+          })}
+          {filteredJarItems.length === 0 && (
+            <p className="py-12 text-center text-sm text-muted-foreground">
+              No hay ítems en este jar.
+            </p>
+          )}
+        </div>
       ) : useGeneticView ? (
         <div className="space-y-3">
           {farmsById[farm] && (

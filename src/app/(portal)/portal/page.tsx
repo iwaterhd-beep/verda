@@ -13,7 +13,9 @@ import { currentMember } from "@/lib/current-member";
 import { fetchMyMember } from "@/lib/data/members";
 import { fetchPortalProducts } from "@/lib/data/products";
 import { fetchClubFarms, fetchFarmGenetics } from "@/lib/data/product-farms";
+import { fetchClubJars, fetchJarItems } from "@/lib/data/product-jars";
 import { PortalFarmCard } from "@/components/portal/portal-farm-card";
+import { PortalJarCard } from "@/components/portal/portal-jar-card";
 import { formatCurrency, walletBalanceTone, cn } from "@/lib/utils";
 
 export default function PortalHomePage() {
@@ -31,10 +33,23 @@ export default function PortalHomePage() {
     queryKey: ["farm-genetics-all"],
     queryFn: () => fetchFarmGenetics(),
   });
+  const { data: jars = [], isError: jarsError, isLoading: jarsLoading } = useQuery({
+    queryKey: ["club-jars"],
+    queryFn: fetchClubJars,
+  });
+  const { data: jarItems = [] } = useQuery({
+    queryKey: ["jar-items-all"],
+    queryFn: () => fetchJarItems(),
+  });
   const featured = menuProducts.filter((p) => p.stock > 0).slice(0, 3);
 
   const geneticsByFarm = genetics.reduce<Map<string, number>>((map, g) => {
     map.set(g.farmId, (map.get(g.farmId) ?? 0) + 1);
+    return map;
+  }, new Map());
+
+  const itemsByJar = jarItems.reduce<Map<string, number>>((map, item) => {
+    map.set(item.jarId, (map.get(item.jarId) ?? 0) + 1);
     return map;
   }, new Map());
 
@@ -119,6 +134,33 @@ export default function PortalHomePage() {
       ) : farmsError ? (
         <p className="text-center text-sm text-muted-foreground">
           No se pudieron cargar las farms.
+        </p>
+      ) : null}
+
+      {jarsLoading ? null : jars.length > 0 ? (
+        <div>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="font-semibold">Jars</h2>
+            <Link
+              href="/portal/menu"
+              className="text-sm text-primary hover:underline"
+            >
+              Ver menú
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {jars.map((j) => (
+              <PortalJarCard
+                key={j.id}
+                jar={j}
+                itemsCount={itemsByJar.get(j.id) ?? 0}
+              />
+            ))}
+          </div>
+        </div>
+      ) : jarsError ? (
+        <p className="text-center text-sm text-muted-foreground">
+          No se pudieron cargar los jars.
         </p>
       ) : null}
 

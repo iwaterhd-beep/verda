@@ -29,6 +29,8 @@ type Row = {
   hidden_from_members?: boolean | null;
   farm_id?: string | null;
   genetic_id?: string | null;
+  jar_id?: string | null;
+  jar_item_id?: string | null;
 };
 
 type PackItemRow = {
@@ -70,6 +72,8 @@ function toProduct(r: Row, packItems?: PackItem[]): Product {
     hiddenFromMembers: Boolean(r.hidden_from_members),
     farmId: r.farm_id ?? null,
     geneticId: r.genetic_id ?? null,
+    jarId: r.jar_id ?? null,
+    jarItemId: r.jar_item_id ?? null,
   };
 }
 
