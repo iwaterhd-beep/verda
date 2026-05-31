@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { Bell, Menu, Search, Sparkles } from "lucide-react";
+import { Menu, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/dashboard/theme-toggle";
 import { UserMenu } from "@/components/dashboard/user-menu";
 import { VerdaAiPanel } from "@/components/dashboard/verda-ai-panel";
+import { NotificationsMenu } from "@/components/dashboard/notifications-menu";
 
 export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
   const [aiOpen, setAiOpen] = React.useState(false);
@@ -53,15 +54,7 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
           >
             <Sparkles className="h-4 w-4 text-primary" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="relative"
-            aria-label="Notificaciones"
-          >
-            <Bell className="h-[18px] w-[18px]" />
-            <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary ring-2 ring-background" />
-          </Button>
+          <NotificationsMenu />
           <ThemeToggle />
           <div className="mx-1 hidden h-6 w-px bg-border sm:block" />
           <UserMenu />
