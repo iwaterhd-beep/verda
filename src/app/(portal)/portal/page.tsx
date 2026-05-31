@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { QrCode, Wallet, ArrowRight, Bell } from "lucide-react";
+import { Wallet, ArrowRight, Bell } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { PlanBadge } from "@/components/members/status-badge";
 import { ProductCard } from "@/components/portal/product-card";
+import { MemberQrCard } from "@/components/portal/member-qr-card";
 import { useQuery } from "@tanstack/react-query";
 import { currentMember } from "@/lib/current-member";
 import { fetchMyMember } from "@/lib/data/members";
@@ -38,33 +37,17 @@ export default function PortalHomePage() {
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-primary" />
+        <Button variant="ghost" size="icon" className="relative" asChild>
+          <Link href="/portal/perfil/notificaciones" aria-label="Notificaciones">
+            <Bell className="h-5 w-5" />
+            <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-primary" />
+          </Link>
         </Button>
       </header>
 
-      {/* Carnet digital */}
-      <Card className="border-glow overflow-hidden">
-        <CardContent className="relative p-5">
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/15 to-transparent" />
-          <div className="relative flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2">
-                <PlanBadge plan={m.membershipPlan} />
-                <Badge variant="success">Activo</Badge>
-              </div>
-              <p className="mt-3 text-lg font-semibold">{m.fullName}</p>
-              <p className="font-mono text-xs text-muted-foreground">
-                {m.qrCode}
-              </p>
-            </div>
-            <div className="grid h-20 w-20 place-items-center rounded-xl bg-background/60 ring-1 ring-border">
-              <QrCode className="h-14 w-14" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <Link href="/portal/perfil/carnet" className="block">
+        <MemberQrCard member={m} showActions={false} />
+      </Link>
 
       {/* Monedero */}
       <Card>

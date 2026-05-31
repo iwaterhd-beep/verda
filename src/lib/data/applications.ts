@@ -74,6 +74,31 @@ export async function fetchApplications(): Promise<MemberApplication[]> {
   return (data as Row[]).map(toApplication);
 }
 
+export async function fetchMyApplication(): Promise<MemberApplication | null> {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data: member } = await supabase
+    .from("members")
+    .select("email")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (!member?.email) return null;
+
+  const { data, error } = await supabase
+    .from("member_applications")
+    .select("*")
+    .eq("email", member.email)
+    .order("submitted_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error || !data) return null;
+  return toApplication(data as Row);
+}
+
 export async function rejectApplication(id: string, reason?: string) {
   const supabase = createClient();
   const { error } = await supabase

@@ -108,11 +108,23 @@ export default function PerfilPage() {
 
       <Card>
         <CardContent className="p-2">
-          <ActionRow icon={QrCode} label="Mi carnet digital" />
+          <ActionRow
+            icon={QrCode}
+            label="Mi carnet digital"
+            href="/portal/perfil/carnet"
+          />
           <Separator />
-          <ActionRow icon={FileText} label="Mis documentos y consentimientos" />
+          <ActionRow
+            icon={FileText}
+            label="Mis documentos y consentimientos"
+            href="/portal/perfil/documentos"
+          />
           <Separator />
-          <ActionRow icon={Bell} label="Notificaciones" />
+          <ActionRow
+            icon={Bell}
+            label="Notificaciones"
+            href="/portal/perfil/notificaciones"
+          />
           <Separator />
           <button
             type="button"
@@ -127,7 +139,7 @@ export default function PerfilPage() {
           <ActionRow
             icon={ShieldCheck}
             label="Privacidad y RGPD"
-            href="/legal"
+            href="/portal/perfil/privacidad"
           />
         </CardContent>
       </Card>
@@ -190,11 +202,11 @@ function Row({ icon: Icon, label }: { icon: React.ElementType; label: string }) 
 function ActionRow({
   icon: Icon,
   label,
-  href = "#",
+  href,
 }: {
   icon: React.ElementType;
   label: string;
-  href?: string;
+  href: string;
 }) {
   return (
     <Link
